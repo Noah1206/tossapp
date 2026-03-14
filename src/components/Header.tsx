@@ -44,8 +44,8 @@ export default function Header({ title, showBack, onMenuClick, selectedPlatform,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        height: 56,
-        padding: '0 16px',
+        height: 72,
+        padding: '0 20px',
       }}>
         {/* Left side */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -53,9 +53,9 @@ export default function Header({ title, showBack, onMenuClick, selectedPlatform,
             <button
               onClick={() => window.history.back()}
               className="press-effect"
-              style={{ width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'none', cursor: 'pointer' }}
+              style={{ width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'none', cursor: 'pointer' }}
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                 <path d="M15 19l-7-7 7-7" stroke="#000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </button>
@@ -65,9 +65,9 @@ export default function Header({ title, showBack, onMenuClick, selectedPlatform,
                 <button
                   onClick={onMenuClick}
                   className="press-effect"
-                  style={{ width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'none', cursor: 'pointer' }}
+                  style={{ width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'none', cursor: 'pointer' }}
                 >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                     <path d="M4 7h16M4 12h16M4 17h16" stroke="#000" strokeWidth="1.5" strokeLinecap="round"/>
                   </svg>
                 </button>
@@ -94,7 +94,7 @@ export default function Header({ title, showBack, onMenuClick, selectedPlatform,
                     }}
                   >
                     <span style={{
-                      fontSize: 16,
+                      fontSize: 18,
                       fontWeight: 700,
                       color: '#000',
                       whiteSpace: 'nowrap',
@@ -168,12 +168,12 @@ export default function Header({ title, showBack, onMenuClick, selectedPlatform,
 
               {/* Title fallback */}
               {!onPlatformChange && (
-                <span style={{ fontSize: 16, fontWeight: 700 }}>LOGOS</span>
+                <span style={{ fontSize: 18, fontWeight: 700 }}>LOGOS</span>
               )}
             </>
           )}
           {title && (
-            <span style={{ fontSize: 16, fontWeight: 700 }}>{title}</span>
+            <span style={{ fontSize: 18, fontWeight: 700 }}>{title}</span>
           )}
         </div>
 
@@ -185,7 +185,7 @@ export default function Header({ title, showBack, onMenuClick, selectedPlatform,
                 display: 'flex',
                 alignItems: 'center',
                 gap: 6,
-                padding: '6px 12px',
+                padding: '8px 14px',
                 borderRadius: 9999,
                 background: 'rgba(0,0,0,0.04)',
                 border: '1px solid rgba(0,0,0,0.06)',
@@ -193,11 +193,11 @@ export default function Header({ title, showBack, onMenuClick, selectedPlatform,
                 flexShrink: 0,
               }}
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                 <circle cx="12" cy="8" r="4" stroke="rgba(0,0,0,0.35)" strokeWidth="1.5"/>
                 <path d="M4 20c0-3.3 3.6-6 8-6s8 2.7 8 6" stroke="rgba(0,0,0,0.35)" strokeWidth="1.5" strokeLinecap="round"/>
               </svg>
-              <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(0,0,0,0.45)' }}>게스트</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'rgba(0,0,0,0.45)' }}>게스트</span>
             </div>
           )}
         </div>

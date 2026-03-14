@@ -176,7 +176,7 @@ function ResultContent() {
 
     const controller = new AbortController();
 
-    // 3분 타임아웃 — fetch도 중단
+    // 5분 타임아웃 — fetch도 중단
     const timeout = setTimeout(() => {
       if (!cancelled) {
         cancelled = true;
@@ -184,7 +184,7 @@ function ResultContent() {
         setErrorMessage("변환 시간이 너무 오래 걸려요. 다시 시도해주세요.");
         setIsError(true);
       }
-    }, 180_000);
+    }, 300_000);
 
     const callSSE = async () => {
       try {
@@ -241,11 +241,34 @@ function ResultContent() {
               if (event.result) {
                 clearTimeout(timeout);
                 gotResult = true;
+                console.log("[DEBUG] frame_urls from backend:", event.result.frame_urls);
                 const mapped = mapResponseToResultData(event.result);
+                console.log("[DEBUG] mapped frameUrls:", mapped.frameUrls);
                 setResultData(mapped);
                 setProgress(100);
                 setDisplayProgress(100);
                 setTimeout(() => setIsComplete(true), 400);
+
+                // 히스토리 자동 저장
+                try {
+                  const userId = localStorage.getItem("toss_user_id");
+                  if (userId) {
+                    const platform = url.includes("instagram") ? "instagram" : "youtube";
+                    fetch("/api/history", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        userId,
+                        platform,
+                        sourceUrl: url,
+                        title: mapped.blogTitle || null,
+                        preview: mapped.summary?.slice(0, 100) || null,
+                        resultJson: event.result,
+                      }),
+                    }).catch(() => {});
+                  }
+                } catch {}
+
                 return;
               }
             } catch {
@@ -286,7 +309,7 @@ function ResultContent() {
     };
 
     callSSE();
-    return () => { cancelled = true; clearTimeout(timeout); controller.abort(); };
+    return () => { cancelled = true; clearTimeout(timeout); controller.abort(); hasStarted.current = false; };
   }, [url, tone]);
 
   // 에러 상태

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 
 interface BlogSection {
   emoji: string;
@@ -24,8 +24,26 @@ interface BlogResultProps {
   onBack: () => void;
 }
 
+async function downloadImage(url: string, filename: string) {
+  try {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(blobUrl);
+  } catch {
+    window.open(url, "_blank");
+  }
+}
+
 export default function BlogResult({ data, sourceUrl, onBack }: BlogResultProps) {
   const [copied, setCopied] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   // 프레임 매칭 로직 (웹 버전과 동일)
   const hasFrameMatching = data.sections.some(
@@ -59,6 +77,16 @@ export default function BlogResult({ data, sourceUrl, onBack }: BlogResultProps)
       // fallback
     }
   };
+
+  const handleDownloadAll = useCallback(async () => {
+    if (data.frameUrls.length === 0 || downloading) return;
+    setDownloading(true);
+    for (let i = 0; i < data.frameUrls.length; i++) {
+      await downloadImage(data.frameUrls[i], `blog_image_${i + 1}.jpg`);
+      if (i < data.frameUrls.length - 1) await new Promise(r => setTimeout(r, 300));
+    }
+    setDownloading(false);
+  }, [data.frameUrls, downloading]);
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
@@ -96,8 +124,23 @@ export default function BlogResult({ data, sourceUrl, onBack }: BlogResultProps)
 
         {/* 도입부 이미지 */}
         {introUrl && (
-          <div style={{ margin: '16px 0', borderRadius: 12, overflow: 'hidden' }}>
+          <div style={{ margin: '16px 0', borderRadius: 12, overflow: 'hidden', position: 'relative' }}>
             <img src={introUrl} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} />
+            <button
+              onClick={() => downloadImage(introUrl, 'blog_image_intro.jpg')}
+              className="press-effect"
+              style={{
+                position: 'absolute', top: 10, right: 10,
+                width: 34, height: 34, borderRadius: 10,
+                background: 'rgba(0,0,0,0.5)', border: 'none',
+                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <path d="M12 3v13M5 12l7 7 7-7" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M5 21h14" stroke="#fff" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+            </button>
           </div>
         )}
 
@@ -133,8 +176,23 @@ export default function BlogResult({ data, sourceUrl, onBack }: BlogResultProps)
 
               {/* 섹션 이미지 */}
               {frameUrl && (
-                <div style={{ margin: '16px 0', borderRadius: 12, overflow: 'hidden' }}>
+                <div style={{ margin: '16px 0', borderRadius: 12, overflow: 'hidden', position: 'relative' }}>
                   <img src={frameUrl} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} />
+                  <button
+                    onClick={() => downloadImage(frameUrl, `blog_image_${idx + 1}.jpg`)}
+                    className="press-effect"
+                    style={{
+                      position: 'absolute', top: 10, right: 10,
+                      width: 34, height: 34, borderRadius: 10,
+                      background: 'rgba(0,0,0,0.5)', border: 'none',
+                      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                      <path d="M12 3v13M5 12l7 7 7-7" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M5 21h14" stroke="#fff" strokeWidth="2" strokeLinecap="round"/>
+                    </svg>
+                  </button>
                 </div>
               )}
             </div>
@@ -189,19 +247,24 @@ export default function BlogResult({ data, sourceUrl, onBack }: BlogResultProps)
             {copied ? "복사 완료!" : "복사하기"}
           </span>
         </button>
-        <button
-          className="press-effect"
-          style={{
-            width: 48, height: 48, borderRadius: 14,
-            background: 'rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.08)',
-            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-            <path d="M4 12v7a2 2 0 002 2h12a2 2 0 002-2v-7" stroke="rgba(0,0,0,0.4)" strokeWidth="1.5" strokeLinecap="round"/>
-            <path d="M16 6l-4-4-4 4M12 2v13" stroke="rgba(0,0,0,0.4)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </button>
+        {data.frameUrls.length > 0 && (
+          <button
+            onClick={handleDownloadAll}
+            className="press-effect"
+            style={{
+              width: 48, height: 48, borderRadius: 14,
+              background: downloading ? 'rgba(107,92,231,0.1)' : 'rgba(0,0,0,0.04)',
+              border: `1px solid ${downloading ? 'rgba(107,92,231,0.2)' : 'rgba(0,0,0,0.08)'}`,
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+            title="사진 전체 저장"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <path d="M12 3v13M5 12l7 7 7-7" stroke={downloading ? '#6B5CE7' : 'rgba(0,0,0,0.4)'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M5 21h14" stroke={downloading ? '#6B5CE7' : 'rgba(0,0,0,0.4)'} strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+          </button>
+        )}
         <button
           onClick={onBack}
           className="press-effect"

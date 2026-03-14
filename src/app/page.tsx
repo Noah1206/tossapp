@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import HistorySidebar from "@/components/HistorySidebar";
@@ -43,6 +43,13 @@ export default function Home() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const handleHistoryItemClick = useCallback((item: { sourceUrl: string }) => {
+    setSidebarOpen(false);
+    router.push(`/result?url=${encodeURIComponent(item.sourceUrl)}`);
+  }, [router]);
 
   const YOUTUBE_RE = /https?:\/\/(?:www\.)?(?:youtube\.com\/shorts\/|youtu\.be\/)([a-zA-Z0-9_-]+)/;
   const INSTAGRAM_RE = /https?:\/\/(?:www\.)?instagram\.com\/(reel|reels|p)\/([a-zA-Z0-9_-]+)/;
@@ -118,6 +125,7 @@ export default function Home() {
     if (result) {
       setUser(result);
       setShowLoginModal(false);
+      try { localStorage.setItem("toss_user_id", result.id); } catch {}
     }
   };
 
@@ -165,13 +173,19 @@ export default function Home() {
         selectedPlatform={selectedPlatform}
         onPlatformChange={(p) => handlePlatformSelect(p as Platform)}
       />
-      <HistorySidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <HistorySidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        userId={user?.id}
+        onItemClick={handleHistoryItemClick}
+        refreshKey={refreshKey}
+      />
 
       <main style={{ flex: 1, overflowY: 'auto' }}>
         <div className="animate-fade-in-up" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
 
           {/* ── Plan Badge ── */}
-          <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 100 }}>
+          <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 80 }}>
             <div className="plan-badge">
               <span className="plan-badge__label">{user ? `${user.name} · 무료 플랜` : "무료 플랜"}</span>
               <span className="plan-badge__divider" />
@@ -180,7 +194,7 @@ export default function Home() {
           </div>
 
           {/* ── Title Section ── */}
-          <div style={{ padding: '80px 24px 28px' }}>
+          <div style={{ padding: '200px 24px 28px' }}>
             <h1 style={{ fontSize: 32, fontWeight: 800, letterSpacing: '-0.02em', color: '#000', whiteSpace: 'pre-line', lineHeight: 1.35 }}>
               {currentTitle}
             </h1>
@@ -309,7 +323,7 @@ export default function Home() {
           </div>
 
           {/* ── Quick Links ── */}
-          <div style={{ padding: '100px 20px 20px' }}>
+          <div style={{ padding: '24px 20px 20px' }}>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
               <a href="/convert" className="action-chip">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none">

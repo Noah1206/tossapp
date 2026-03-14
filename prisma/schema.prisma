@@ -1,0 +1,21 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Conversion {
+  id        String   @id @default(cuid())
+  userId    String
+  platform  String   // "youtube" | "instagram"
+  sourceUrl String
+  title     String?
+  preview   String?  // 첫 100자
+  resultJson Json?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt(sort: Desc)])
+}
