@@ -2,43 +2,57 @@
 
 import { useState } from "react";
 
-interface BlogResultProps {
+interface BlogSection {
+  emoji: string;
+  title: string;
   content: string;
+  frame_index?: number | null;
+}
+
+interface ResultData {
+  blogTitle: string;
+  summary: string;
+  sections: BlogSection[];
+  hashtags: string[];
+  frameUrls: string[];
+  closingCta: string;
+}
+
+interface BlogResultProps {
+  data: ResultData;
   sourceUrl: string;
   onBack: () => void;
 }
 
-function parseBlogContent(raw: string) {
-  const lines = raw.split("\n");
-  const sections: { type: "title" | "subtitle" | "text" | "list" | "hashtags"; content: string }[] = [];
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
-
-    if (trimmed.startsWith("## ")) {
-      sections.push({ type: "title", content: trimmed.replace("## ", "") });
-    } else if (trimmed.startsWith("### ")) {
-      sections.push({ type: "subtitle", content: trimmed.replace("### ", "") });
-    } else if (/^\d+\.\s\*\*/.test(trimmed)) {
-      sections.push({ type: "list", content: trimmed.replace(/^\d+\.\s/, "").replace(/\*\*/g, "") });
-    } else if (trimmed.startsWith("#") && trimmed.includes(" #")) {
-      sections.push({ type: "hashtags", content: trimmed });
-    } else {
-      sections.push({ type: "text", content: trimmed.replace(/\*\*/g, "") });
-    }
-  }
-
-  return sections;
-}
-
-export default function BlogResult({ content, sourceUrl, onBack }: BlogResultProps) {
+export default function BlogResult({ data, sourceUrl, onBack }: BlogResultProps) {
   const [copied, setCopied] = useState(false);
-  const sections = parseBlogContent(content);
+
+  // 프레임 매칭 로직 (웹 버전과 동일)
+  const hasFrameMatching = data.sections.some(
+    (s) => s.frame_index != null && s.frame_index >= 0
+  );
+  const usedIndices = new Set(
+    data.sections
+      .map((s) => s.frame_index)
+      .filter((fi): fi is number => fi != null && fi >= 0)
+  );
+  const introIndex = data.frameUrls.findIndex((_, i) => !usedIndices.has(i));
+  const introUrl = data.frameUrls.length > 0
+    ? data.frameUrls[introIndex >= 0 ? introIndex : 0]
+    : undefined;
+  const introActualIdx = data.frameUrls.length > 0 ? (introIndex >= 0 ? introIndex : 0) : -1;
 
   const handleCopy = async () => {
+    // 텍스트 + 이미지 포함 복사
+    let text = `${data.blogTitle}\n\n${data.summary}\n\n`;
+    for (const s of data.sections) {
+      text += `${s.emoji} ${s.title}\n\n${s.content}\n\n`;
+    }
+    if (data.closingCta) text += `${data.closingCta}\n\n`;
+    if (data.hashtags.length > 0) text += data.hashtags.join(" ");
+
     try {
-      await navigator.clipboard.writeText(content);
+      await navigator.clipboard.writeText(text);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -51,13 +65,9 @@ export default function BlogResult({ content, sourceUrl, onBack }: BlogResultPro
       {/* Source URL */}
       <div style={{ padding: '16px 20px 0' }}>
         <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          padding: '10px 14px',
-          background: 'rgba(0,0,0,0.025)',
-          borderRadius: 12,
-          border: '1px solid rgba(0,0,0,0.06)',
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '10px 14px', background: 'rgba(0,0,0,0.025)',
+          borderRadius: 12, border: '1px solid rgba(0,0,0,0.06)',
         }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, opacity: 0.25 }}>
             <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" stroke="#000" strokeWidth="1.8" strokeLinecap="round"/>
@@ -71,135 +81,98 @@ export default function BlogResult({ content, sourceUrl, onBack }: BlogResultPro
 
       {/* Blog Content */}
       <div style={{ padding: '24px 20px 20px' }}>
-        {sections.map((section, i) => {
-          if (section.type === "title") {
-            return (
-              <h2 key={i} style={{
-                fontSize: 20,
-                fontWeight: 800,
-                color: '#000',
-                margin: i === 0 ? '0 0 20px' : '32px 0 20px',
-                lineHeight: 1.4,
-                letterSpacing: '-0.02em',
-              }}>
-                {section.content}
-              </h2>
-            );
+        {/* 제목 */}
+        <h2 style={{
+          fontSize: 20, fontWeight: 800, color: '#000',
+          margin: '0 0 20px', lineHeight: 1.4, letterSpacing: '-0.02em',
+        }}>
+          {data.blogTitle}
+        </h2>
+
+        {/* 도입부 */}
+        <p style={{ fontSize: 15, color: 'rgba(0,0,0,0.65)', lineHeight: 2, margin: '4px 0' }}>
+          {data.summary}
+        </p>
+
+        {/* 도입부 이미지 */}
+        {introUrl && (
+          <div style={{ margin: '16px 0', borderRadius: 12, overflow: 'hidden' }}>
+            <img src={introUrl} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} />
+          </div>
+        )}
+
+        {/* 섹션들 */}
+        {data.sections.map((section, idx) => {
+          // 섹션 이미지 매칭
+          let frameUrl: string | undefined;
+          if (hasFrameMatching) {
+            if (section.frame_index != null && section.frame_index >= 0 && section.frame_index < data.frameUrls.length && section.frame_index !== introActualIdx) {
+              frameUrl = data.frameUrls[section.frame_index];
+            }
+          } else {
+            const fallbackIdx = idx + 1;
+            if (fallbackIdx !== introActualIdx && fallbackIdx < data.frameUrls.length) {
+              frameUrl = data.frameUrls[fallbackIdx];
+            }
           }
-          if (section.type === "subtitle") {
-            return (
-              <div key={i} style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                margin: '28px 0 14px',
-              }}>
-                <span style={{
-                  width: 3,
-                  height: 20,
-                  background: '#6B5CE7',
-                  borderRadius: 2,
-                  flexShrink: 0,
-                }} />
-                <h3 style={{
-                  fontSize: 16,
-                  fontWeight: 700,
-                  color: '#000',
-                  lineHeight: 1.4,
-                }}>
-                  {section.content}
+
+          return (
+            <div key={idx}>
+              {/* 소제목 */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '28px 0 14px' }}>
+                <span style={{ width: 3, height: 20, background: '#6B5CE7', borderRadius: 2, flexShrink: 0 }} />
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: '#000', lineHeight: 1.4 }}>
+                  {section.emoji} {section.title}
                 </h3>
               </div>
-            );
-          }
-          if (section.type === "list") {
-            return (
-              <div key={i} style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: 10,
-                padding: '6px 0',
-                marginLeft: 6,
-              }}>
-                <span style={{
-                  width: 6,
-                  height: 6,
-                  borderRadius: '50%',
-                  background: '#6B5CE7',
-                  flexShrink: 0,
-                  marginTop: 9,
-                  opacity: 0.5,
-                }} />
-                <p style={{
-                  fontSize: 15,
-                  color: 'rgba(0,0,0,0.7)',
-                  lineHeight: 2,
-                }}>
-                  {section.content}
-                </p>
-              </div>
-            );
-          }
-          if (section.type === "hashtags") {
-            return (
-              <div key={i} style={{
-                marginTop: 28,
-                paddingTop: 20,
-                borderTop: '1px solid rgba(0,0,0,0.06)',
-              }}>
-                <p style={{
-                  fontSize: 13,
-                  color: '#6B5CE7',
-                  lineHeight: 1.8,
-                  fontWeight: 500,
-                }}>
-                  {section.content}
-                </p>
-              </div>
-            );
-          }
-          // text
-          return (
-            <p key={i} style={{
-              fontSize: 15,
-              color: 'rgba(0,0,0,0.65)',
-              lineHeight: 2,
-              margin: '4px 0',
-            }}>
-              {section.content}
-            </p>
+
+              {/* 본문 */}
+              <p style={{ fontSize: 15, color: 'rgba(0,0,0,0.65)', lineHeight: 2, margin: '4px 0', whiteSpace: 'pre-line' }}>
+                {section.content}
+              </p>
+
+              {/* 섹션 이미지 */}
+              {frameUrl && (
+                <div style={{ margin: '16px 0', borderRadius: 12, overflow: 'hidden' }}>
+                  <img src={frameUrl} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} />
+                </div>
+              )}
+            </div>
           );
         })}
+
+        {/* 마무리 CTA */}
+        {data.closingCta && (
+          <p style={{ fontSize: 15, color: 'rgba(0,0,0,0.65)', lineHeight: 2, margin: '20px 0 4px' }}>
+            {data.closingCta}
+          </p>
+        )}
+
+        {/* 해시태그 */}
+        {data.hashtags.length > 0 && (
+          <div style={{ marginTop: 28, paddingTop: 20, borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+            <p style={{ fontSize: 13, color: '#6B5CE7', lineHeight: 1.8, fontWeight: 500 }}>
+              {data.hashtags.join(" ")}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Sticky Action Bar */}
       <div style={{
-        position: 'sticky',
-        bottom: 0,
-        background: '#FFFFFF',
-        borderTop: '1px solid rgba(0,0,0,0.06)',
-        padding: '12px 20px',
-        display: 'flex',
-        gap: 10,
+        position: 'sticky', bottom: 0, background: '#FFFFFF',
+        borderTop: '1px solid rgba(0,0,0,0.06)', padding: '12px 20px',
+        display: 'flex', gap: 10,
       }}>
         <button
           onClick={handleCopy}
           className="press-effect"
           style={{
-            flex: 1,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-            height: 48,
-            borderRadius: 14,
-            background: copied ? '#6B5CE7' : '#000',
-            color: '#fff',
-            border: 'none',
-            cursor: 'pointer',
-            fontFamily: 'inherit',
-            letterSpacing: 'inherit',
-            transition: 'background 0.2s',
+            flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            gap: 8, height: 48, borderRadius: 14,
+            background: copied ? '#6B5CE7' : '#000', color: '#fff',
+            border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+            letterSpacing: 'inherit', transition: 'background 0.2s',
           }}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
@@ -219,15 +192,9 @@ export default function BlogResult({ content, sourceUrl, onBack }: BlogResultPro
         <button
           className="press-effect"
           style={{
-            width: 48,
-            height: 48,
-            borderRadius: 14,
-            background: 'rgba(0,0,0,0.04)',
-            border: '1px solid rgba(0,0,0,0.08)',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+            width: 48, height: 48, borderRadius: 14,
+            background: 'rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.08)',
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
@@ -239,15 +206,9 @@ export default function BlogResult({ content, sourceUrl, onBack }: BlogResultPro
           onClick={onBack}
           className="press-effect"
           style={{
-            width: 48,
-            height: 48,
-            borderRadius: 14,
-            background: 'rgba(0,0,0,0.04)',
-            border: '1px solid rgba(0,0,0,0.08)',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+            width: 48, height: 48, borderRadius: 14,
+            background: 'rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.08)',
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none">

@@ -309,7 +309,7 @@ export default function Home() {
           </div>
 
           {/* ── Quick Links ── */}
-          <div style={{ padding: '0 20px 20px' }}>
+          <div style={{ padding: '100px 20px 20px' }}>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
               <a href="/convert" className="action-chip">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none">

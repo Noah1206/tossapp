@@ -43,7 +43,9 @@ function mapResponseToResultData(data: any): ResultData {
     summary: structure.introduction,
     sections,
     hashtags,
-    frameUrls: data.frame_urls ?? [],
+    frameUrls: (data.frame_urls ?? []).map((u: string) =>
+      u.startsWith("/") ? `${process.env.NEXT_PUBLIC_FASTAPI_URL || ""}${u}` : u
+    ),
     closingCta: structure.closing_cta ?? "",
     rawContent: data.blog_content,
   };
@@ -172,10 +174,13 @@ function ResultContent() {
 
     let cancelled = false;
 
-    // 3분 타임아웃
+    const controller = new AbortController();
+
+    // 3분 타임아웃 — fetch도 중단
     const timeout = setTimeout(() => {
       if (!cancelled) {
         cancelled = true;
+        controller.abort();
         setErrorMessage("변환 시간이 너무 오래 걸려요. 다시 시도해주세요.");
         setIsError(true);
       }
@@ -183,7 +188,6 @@ function ResultContent() {
 
     const callSSE = async () => {
       try {
-        const controller = new AbortController();
         const res = await fetch("/api/convert/stream", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -282,7 +286,7 @@ function ResultContent() {
     };
 
     callSSE();
-    return () => { cancelled = true; clearTimeout(timeout); };
+    return () => { cancelled = true; clearTimeout(timeout); controller.abort(); };
   }, [url, tone]);
 
   // 에러 상태
@@ -313,12 +317,11 @@ function ResultContent() {
 
   // 변환 완료 → 결과 표시
   if (isComplete && resultData) {
-    const content = resultToMarkdown(resultData);
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#FFFFFF' }}>
         <Header title="변환 결과" showBack />
         <main style={{ flex: 1, overflowY: 'auto' }}>
-          <BlogResult content={content} sourceUrl={url} onBack={() => window.history.back()} />
+          <BlogResult data={resultData} sourceUrl={url} onBack={() => window.history.back()} />
         </main>
       </div>
     );
