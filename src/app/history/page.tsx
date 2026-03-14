@@ -37,7 +37,6 @@ const sampleHistory: HistoryItem[] = [
 
 export default function HistoryPage() {
   const [history] = useState<HistoryItem[]>(sampleHistory);
-  const credits = 3;
 
   const formatTime = (date: Date) => {
     const diff = Date.now() - date.getTime();
@@ -50,39 +49,50 @@ export default function HistoryPage() {
   };
 
   return (
-    <div className="flex flex-col h-dvh bg-white">
-      <Header credits={credits} title="변환 내역" showBack />
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#FFFFFF' }}>
+      <Header title="변환 내역" showBack />
 
-      <main className="flex-1 overflow-y-auto">
+      <main style={{ flex: 1, overflowY: 'auto' }}>
         {history.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full px-8">
-            <p className="text-[15px] font-bold">아직 내역이 없어요</p>
-            <p className="text-[13px] text-black/40 mt-1 text-center">
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '0 32px' }}>
+            <p style={{ fontSize: 15, fontWeight: 700 }}>아직 내역이 없어요</p>
+            <p style={{ fontSize: 13, color: 'rgba(0,0,0,0.4)', marginTop: 4, textAlign: 'center' }}>
               영상 링크를 보내서 첫 변환을 해보세요
             </p>
           </div>
         ) : (
-          <div className="px-5 py-4">
-            <p className="text-[11px] font-medium text-black/30 mb-3 uppercase tracking-wider">
+          <div style={{ padding: '16px 20px' }}>
+            <p style={{ fontSize: 11, fontWeight: 600, color: 'rgba(0,0,0,0.3)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
               최근 변환 {history.length}건
             </p>
-            <div className="space-y-2">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {history.map((item) => (
                 <button
                   key={item.id}
-                  className="w-full border border-[var(--color-border)] rounded-xl p-4 text-left press-effect"
+                  className="press-effect"
+                  style={{
+                    width: '100%',
+                    border: '1px solid rgba(0,0,0,0.08)',
+                    borderRadius: 14,
+                    padding: 16,
+                    textAlign: 'left',
+                    background: '#FFFFFF',
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    letterSpacing: 'inherit',
+                  }}
                 >
-                  <div className="flex items-start gap-3">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="flex-shrink-0 mt-0.5 opacity-30">
+                  <div style={{ display: 'flex', alignItems: 'start', gap: 12 }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, marginTop: 2, opacity: 0.3 }}>
                       <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="black" strokeWidth="1.5"/>
                     </svg>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[14px] font-semibold truncate">{item.title}</p>
-                      <p className="text-[12px] text-black/40 mt-1 line-clamp-1">{item.preview}</p>
-                      <div className="flex items-center gap-2 mt-2">
-                        <span className="text-[11px] text-black/30">{item.platform === "youtube" ? "YouTube" : "Instagram"}</span>
-                        <span className="text-[11px] text-black/20">·</span>
-                        <span className="text-[11px] text-black/30">{formatTime(item.createdAt)}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontSize: 14, fontWeight: 600, color: '#000', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</p>
+                      <p style={{ fontSize: 12, color: 'rgba(0,0,0,0.4)', marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.preview}</p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+                        <span style={{ fontSize: 11, color: 'rgba(0,0,0,0.3)' }}>{item.platform === "youtube" ? "유튜브" : "인스타그램"}</span>
+                        <span style={{ fontSize: 11, color: 'rgba(0,0,0,0.2)' }}>·</span>
+                        <span style={{ fontSize: 11, color: 'rgba(0,0,0,0.3)' }}>{formatTime(item.createdAt)}</span>
                       </div>
                     </div>
                   </div>

@@ -3,167 +3,203 @@
 import { useState } from "react";
 import Header from "@/components/Header";
 
-interface CreditPlan {
+interface Plan {
   id: string;
-  credits: number;
-  price: number;
-  pricePerCredit: number;
-  popular?: boolean;
-  save?: string;
+  name: string;
+  price: string;
+  period: string;
+  desc: string;
+  features: string[];
+  recommended?: boolean;
+  buttonLabel: string;
+  buttonStyle: "dark" | "brand";
 }
 
-const plans: CreditPlan[] = [
+const plans: Plan[] = [
+  {
+    id: "free",
+    name: "무료 테스터",
+    price: "₩0",
+    period: "신용카드 불필요",
+    desc: "서비스를 먼저 체험해보세요",
+    features: [
+      "가입 시 1회 무료 변환",
+      "유튜브 쇼츠 지원",
+      "네이버 블로그 SEO 생성",
+      "결과 클립보드 복사",
+    ],
+    buttonLabel: "현재 플랜",
+    buttonStyle: "dark",
+  },
   {
     id: "starter",
-    credits: 10,
-    price: 9900,
-    pricePerCredit: 990,
+    name: "스타터 팩",
+    price: "₩9,900",
+    period: "월 구독",
+    desc: "가볍게 시작하는 블로그 마케팅",
+    features: [
+      "블로그 변환 월 100회",
+      "AI 학습 노트 월 50회",
+      "SEO 키워드 최적화",
+      "변환 이력 영구 보관",
+      "유튜브 쇼츠 지원",
+    ],
+    buttonLabel: "알림 받기",
+    buttonStyle: "brand",
   },
   {
     id: "pro",
-    credits: 50,
-    price: 29000,
-    pricePerCredit: 580,
-    popular: true,
-    save: "41%",
-  },
-  {
-    id: "business",
-    credits: 150,
-    price: 69000,
-    pricePerCredit: 460,
-    save: "53%",
+    name: "프로 팩",
+    price: "₩29,000",
+    period: "월 구독",
+    desc: "매출을 만드는 사장님들의 선택",
+    features: [
+      "블로그 변환 무제한",
+      "AI 학습 노트 무제한",
+      "고급 SEO + 톤 커스터마이징",
+      "변환 이력 영구 보관",
+      "우선 지원 + 얼리 액세스",
+    ],
+    recommended: true,
+    buttonLabel: "알림 받기",
+    buttonStyle: "brand",
   },
 ];
 
 export default function CreditsPage() {
   const [selectedPlan, setSelectedPlan] = useState<string>("pro");
-  const [isPurchasing, setIsPurchasing] = useState(false);
-  const credits = 3;
-
-  const handlePurchase = async () => {
-    setIsPurchasing(true);
-    setTimeout(() => {
-      setIsPurchasing(false);
-      alert("토스 결제 연동 예정");
-    }, 1000);
-  };
-
-  const selected = plans.find((p) => p.id === selectedPlan);
 
   return (
-    <div className="flex flex-col h-dvh bg-white">
-      <Header credits={credits} title="크레딧" showBack />
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#FFFFFF' }}>
+      <Header title="요금제" showBack />
 
-      <main className="flex-1 overflow-y-auto">
-        {/* Balance */}
-        <div className="px-5 pt-6 pb-5">
-          <div className="bg-black rounded-xl p-5">
-            <p className="text-[11px] font-medium text-white/40 uppercase tracking-wider">보유 크레딧</p>
-            <div className="flex items-baseline gap-1 mt-1">
-              <span className="text-[36px] font-bold text-white tracking-tight tabular-nums">{credits}</span>
-              <span className="text-[13px] text-white/30 font-medium">크레딧</span>
-            </div>
-            <p className="text-[11px] text-white/30 mt-2">1 크레딧 = 영상 1개 변환</p>
-          </div>
+      <main style={{ flex: 1, overflowY: 'auto' }}>
+        {/* Title */}
+        <div style={{ padding: '24px 20px 8px' }}>
+          <p style={{ fontSize: 22, fontWeight: 800, color: '#000', lineHeight: 1.4 }}>
+            나에게 맞는 플랜을 선택하세요
+          </p>
+          <p style={{ fontSize: 14, color: 'rgba(0,0,0,0.4)', marginTop: 6 }}>
+            결제 시스템 준비 중이에요. 알림을 받아보세요.
+          </p>
         </div>
 
         {/* Plans */}
-        <div className="px-5 pb-5">
-          <p className="text-[14px] font-bold mb-3">충전 패키지</p>
-          <div className="space-y-2">
-            {plans.map((plan) => {
-              const isSelected = selectedPlan === plan.id;
-              return (
-                <button
-                  key={plan.id}
-                  onClick={() => setSelectedPlan(plan.id)}
-                  className={`w-full relative flex items-center justify-between p-4 rounded-xl transition-all press-effect ${
-                    isSelected
-                      ? "bg-[var(--color-surface-secondary)] ring-1 ring-black/10"
-                      : "bg-white border border-[var(--color-border)]"
-                  }`}
-                >
-                  {plan.popular && (
-                    <span className="absolute -top-2 left-4 px-2 py-0.5 rounded text-[9px] font-bold bg-[var(--color-brand)] text-white uppercase tracking-wider">
-                      추천
-                    </span>
-                  )}
+        <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {plans.map((plan) => {
+            const isSelected = selectedPlan === plan.id;
+            const isRecommended = plan.recommended;
+            return (
+              <button
+                key={plan.id}
+                onClick={() => setSelectedPlan(plan.id)}
+                style={{
+                  position: 'relative',
+                  width: '100%',
+                  padding: '20px 18px',
+                  borderRadius: 18,
+                  border: isSelected
+                    ? '1.5px solid #6B5CE7'
+                    : '1px solid rgba(0,0,0,0.08)',
+                  background: isSelected ? 'rgba(107,92,231,0.03)' : '#FFFFFF',
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  letterSpacing: 'inherit',
+                  textAlign: 'left',
+                  transition: 'all 0.15s',
+                }}
+              >
+                {isRecommended && (
+                  <span style={{
+                    position: 'absolute',
+                    top: -9,
+                    left: 16,
+                    padding: '3px 10px',
+                    borderRadius: 6,
+                    fontSize: 10,
+                    fontWeight: 700,
+                    background: '#6B5CE7',
+                    color: '#FFFFFF',
+                  }}>
+                    추천
+                  </span>
+                )}
 
-                  <div className="text-left">
-                    <div className="flex items-center gap-2">
-                      <p className="text-[15px] font-bold">{plan.credits}건</p>
-                      {plan.save && (
-                        <span className="text-[10px] font-bold text-[var(--color-brand)]">
-                          -{plan.save}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[11px] text-black/30 mt-0.5">
-                      건당 {plan.pricePerCredit.toLocaleString()}원
+                {/* Plan header */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <p style={{ fontSize: 16, fontWeight: 700, color: '#000' }}>{plan.name}</p>
+                    <p style={{ fontSize: 12, color: 'rgba(0,0,0,0.35)', marginTop: 2 }}>{plan.desc}</p>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <p style={{ fontSize: 20, fontWeight: 800, color: isSelected ? '#6B5CE7' : '#000' }}>
+                      {plan.price}
                     </p>
+                    <p style={{ fontSize: 11, color: 'rgba(0,0,0,0.3)' }}>{plan.period}</p>
                   </div>
+                </div>
 
-                  <div className="flex items-center gap-3">
-                    <span className="text-[16px] font-bold tabular-nums">
-                      {plan.price.toLocaleString()}원
-                    </span>
-                    <div
-                      className={`w-5 h-5 rounded-full border-[1.5px] flex items-center justify-center ${
-                        isSelected
-                          ? "border-[var(--color-brand)] bg-[var(--color-brand)]"
-                          : "border-black/15"
-                      }`}
-                    >
-                      {isSelected && (
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
-                          <path d="M20 6L9 17l-5-5" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      )}
+                {/* Features */}
+                <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {plan.features.map((f) => (
+                    <div key={f} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
+                        <path
+                          d="M20 6L9 17l-5-5"
+                          stroke={plan.id === "free" ? "rgba(0,0,0,0.25)" : "#6B5CE7"}
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                      <span style={{ fontSize: 13, color: 'rgba(0,0,0,0.55)' }}>{f}</span>
                     </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+                  ))}
+                </div>
+
+                {/* Button */}
+                <div
+                  className="press-effect"
+                  style={{
+                    marginTop: 16,
+                    width: '100%',
+                    height: 42,
+                    borderRadius: 12,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: plan.id === "free"
+                      ? 'rgba(0,0,0,0.06)'
+                      : '#6B5CE7',
+                    color: plan.id === "free" ? 'rgba(0,0,0,0.35)' : '#FFFFFF',
+                    fontSize: 14,
+                    fontWeight: 700,
+                    cursor: plan.id === "free" ? 'default' : 'pointer',
+                  }}
+                >
+                  {plan.buttonLabel}
+                </div>
+              </button>
+            );
+          })}
         </div>
 
-        {/* Features */}
-        <div className="px-5 pb-6">
-          <p className="text-[12px] font-medium text-black/30 mb-3 uppercase tracking-wider">포함 기능</p>
-          <div className="space-y-2.5">
-            {[
-              "유튜브 쇼츠 & 인스타 릴스",
-              "네이버 블로그 SEO 최적화",
-              "톤/스타일 커스터마이징",
-              "변환 이력 무제한 보관",
-            ].map((feature) => (
-              <div key={feature} className="flex items-center gap-2.5">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="flex-shrink-0">
-                  <path d="M20 6L9 17l-5-5" stroke="var(--color-brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                <span className="text-[13px] text-black/60">{feature}</span>
-              </div>
-            ))}
+        {/* Value prop */}
+        <div style={{ padding: '0 20px 32px' }}>
+          <div style={{
+            padding: '16px',
+            background: 'rgba(107,92,231,0.04)',
+            borderRadius: 14,
+            border: '1px solid rgba(107,92,231,0.08)',
+          }}>
+            <p style={{ fontSize: 12, color: 'rgba(0,0,0,0.5)', lineHeight: 1.7, textAlign: 'center' }}>
+              블로그 대행사 월 수십만 원 vs LOGOS.ai 건당 <span style={{ fontWeight: 700, color: '#6B5CE7' }}>₩580~990</span>
+              <br />
+              사장님들께 가장 합리적인 선택입니다.
+            </p>
           </div>
         </div>
       </main>
-
-      {/* CTA */}
-      <div className="bg-white px-5 py-4 border-t border-[var(--color-border)]">
-        <button
-          onClick={handlePurchase}
-          disabled={isPurchasing}
-          className="w-full h-[48px] rounded-lg bg-[var(--color-brand)] text-white text-[15px] font-bold press-effect disabled:opacity-40 flex items-center justify-center"
-        >
-          {isPurchasing ? (
-            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-          ) : (
-            <>{selected?.price.toLocaleString()}원 결제하기</>
-          )}
-        </button>
-        <div className="safe-area-bottom" />
-      </div>
     </div>
   );
 }

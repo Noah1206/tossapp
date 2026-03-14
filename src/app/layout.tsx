@@ -29,8 +29,23 @@ export default function RootLayout({
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
         />
       </head>
-      <body className="safe-area-top safe-area-bottom flex justify-center">
-        <div className="mx-auto max-w-[480px] min-h-dvh bg-[var(--color-background)] relative overflow-x-hidden">
+      <body
+        className="safe-area-top safe-area-bottom"
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          background: '#FFFFFF',
+        }}
+      >
+        <div
+          style={{
+            width: '100%',
+            maxWidth: 480,
+            minHeight: '100dvh',
+            position: 'relative',
+            overflow: 'hidden',
+          }}
+        >
           {children}
         </div>
       </body>

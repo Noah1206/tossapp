@@ -59,52 +59,118 @@ export default function HistorySidebar({ isOpen, onClose }: HistorySidebarProps)
 
   return (
     <>
+      {/* Backdrop */}
       <div
-        className={`fixed inset-0 z-[60] bg-black/20 transition-opacity duration-300 ${
-          isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
-        }`}
         onClick={onClose}
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 60,
+          background: 'rgba(0,0,0,0.2)',
+          opacity: isOpen ? 1 : 0,
+          pointerEvents: isOpen ? 'auto' : 'none',
+          transition: 'opacity 0.3s',
+        }}
       />
 
-      <div
-        className={`fixed top-0 left-0 z-[70] h-full w-[280px] max-w-[80vw] bg-white border-r border-[var(--color-border)] transition-transform duration-300 ease-out ${
-          isOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <div className="flex items-center justify-between h-[52px] px-5 border-b border-[var(--color-border)]">
-          <span className="text-[15px] font-bold">내역</span>
-          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center press-effect">
+      {/* Sidebar */}
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        zIndex: 70,
+        height: '100%',
+        width: 280,
+        maxWidth: '80vw',
+        background: '#FFFFFF',
+        borderRight: '1px solid rgba(0,0,0,0.06)',
+        transform: isOpen ? 'translateX(0)' : 'translateX(-100%)',
+        transition: 'transform 0.3s cubic-bezier(0.33, 1, 0.68, 1)',
+        display: 'flex',
+        flexDirection: 'column',
+      }}>
+        {/* Header */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          height: 52,
+          padding: '0 20px',
+          borderBottom: 'none',
+        }}>
+          <span style={{ fontSize: 15, fontWeight: 700 }}>히스토리</span>
+          <button
+            onClick={onClose}
+            className="press-effect"
+            style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'none', cursor: 'pointer' }}
+          >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
               <path d="M18 6L6 18M6 6l12 12" stroke="black" strokeWidth="1.5" strokeLinecap="round"/>
             </svg>
           </button>
         </div>
 
-        <div className="px-3 py-3">
-          <button className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-black text-white press-effect">
+        {/* New button */}
+        <div style={{ padding: 12 }}>
+          <button
+            className="press-effect"
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              padding: '10px 16px',
+              borderRadius: 12,
+              background: '#6B5CE7',
+              color: '#FFFFFF',
+              border: 'none',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              letterSpacing: 'inherit',
+            }}
+          >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
               <path d="M12 5v14M5 12h14" stroke="white" strokeWidth="2" strokeLinecap="round"/>
             </svg>
-            <span className="text-[13px] font-semibold">새 변환</span>
+            <span style={{ fontSize: 13, fontWeight: 600 }}>새 변환</span>
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-3 pb-8">
-          <p className="text-[11px] font-medium text-black/30 uppercase tracking-wider mb-1.5 px-2">
+        {/* History list */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '0 12px 32px' }}>
+          <p style={{ fontSize: 11, fontWeight: 600, color: 'rgba(0,0,0,0.3)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6, padding: '0 8px' }}>
             최근
           </p>
-          <div className="space-y-0.5">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {sampleHistory.map((item) => (
               <button
                 key={item.id}
-                className="w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg text-left hover:bg-[var(--color-surface-secondary)] press-effect transition-colors"
+                className="press-effect"
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: '10px 10px',
+                  borderRadius: 10,
+                  textAlign: 'left',
+                  border: 'none',
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  letterSpacing: 'inherit',
+                  transition: 'background 0.12s',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.04)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="flex-shrink-0 opacity-30">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, opacity: 0.25 }}>
                   <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="black" strokeWidth="1.5"/>
                 </svg>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-medium truncate">{item.title}</p>
-                  <p className="text-[11px] text-black/30 mt-0.5">{formatTime(item.createdAt)}</p>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 13, fontWeight: 500, color: '#000', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</p>
+                  <p suppressHydrationWarning style={{ fontSize: 11, color: 'rgba(0,0,0,0.3)', marginTop: 2 }}>{formatTime(item.createdAt)}</p>
                 </div>
               </button>
             ))}

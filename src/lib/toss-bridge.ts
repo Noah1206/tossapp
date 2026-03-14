@@ -1,6 +1,10 @@
 /**
  * Toss Mini App Bridge
- * 토스 앱과의 네이티브 통신을 위한 브릿지 유틸리티
+ * 토스 앱 WebView와의 네이티브 통신 브릿지
+ *
+ * 토스 미니앱(앱인토스)은 토스 앱 내 WebView에서 동작합니다.
+ * appLogin은 네이티브 SDK(@apps-in-toss/framework) 전용이므로,
+ * WebView에서는 브릿지 메시지를 통해 로그인을 요청합니다.
  */
 
 declare global {
@@ -18,14 +22,24 @@ declare global {
   }
 }
 
-// 토스앱 WebView 환경인지 확인
+// ── 사용자 타입 ──
+
+export interface TossUser {
+  id: string;
+  name: string;
+  profileImage?: string;
+}
+
+// ── 환경 감지 ──
+
 export function isTossApp(): boolean {
   if (typeof window === "undefined") return false;
   const ua = navigator.userAgent.toLowerCase();
   return ua.includes("tossapp") || ua.includes("apps-in-toss");
 }
 
-// 토스 브릿지로 메시지 전송
+// ── 브릿지 통신 ──
+
 export function sendTossBridge(action: string, data?: Record<string, unknown>) {
   const message = JSON.stringify({ action, data });
 
@@ -46,7 +60,8 @@ export function sendTossBridge(action: string, data?: Record<string, unknown>) {
   console.log("[TossBridge] Not in Toss WebView:", action, data);
 }
 
-// 뒤로가기
+// ── 네비게이션 ──
+
 export function goBack() {
   if (isTossApp()) {
     sendTossBridge("back");
@@ -55,7 +70,8 @@ export function goBack() {
   }
 }
 
-// 공유하기
+// ── 공유 ──
+
 export function share(title: string, text: string, url?: string) {
   if (isTossApp()) {
     sendTossBridge("share", { title, text, url });
@@ -64,13 +80,13 @@ export function share(title: string, text: string, url?: string) {
   }
 }
 
-// 클립보드 복사
+// ── 클립보드 ──
+
 export async function copyToClipboard(text: string): Promise<boolean> {
   try {
     await navigator.clipboard.writeText(text);
     return true;
   } catch {
-    // fallback for older browsers
     const textarea = document.createElement("textarea");
     textarea.value = text;
     textarea.style.position = "fixed";
@@ -88,7 +104,8 @@ export async function copyToClipboard(text: string): Promise<boolean> {
   }
 }
 
-// 토스 결제 호출 (토스페이먼츠)
+// ── 결제 ──
+
 export function requestTossPayment(options: {
   amount: number;
   orderId: string;
@@ -98,7 +115,57 @@ export function requestTossPayment(options: {
   if (isTossApp()) {
     sendTossBridge("payment", options);
   } else {
-    // 웹 환경에서는 토스페이먼츠 SDK 사용
     console.log("[TossPayment] Web payment:", options);
   }
+}
+
+// ── 로그인 ──
+
+/**
+ * 토스 로그인 요청
+ *
+ * 토스 앱 환경: 네이티브 브릿지로 로그인 동의 화면 호출 → 결과 수신
+ * 웹 환경: 데모용 게스트 로그인 즉시 반환
+ */
+export function requestTossLogin(): Promise<TossUser | null> {
+  return new Promise((resolve) => {
+    if (isTossApp()) {
+      // 네이티브에서 로그인 결과를 message 이벤트로 수신
+      const handler = (event: MessageEvent) => {
+        try {
+          const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
+          if (data.action === "loginResult") {
+            window.removeEventListener("message", handler);
+            if (data.success && data.user) {
+              resolve({
+                id: data.user.id || data.user.userKey,
+                name: data.user.name,
+                profileImage: data.user.profileImage,
+              });
+            } else {
+              resolve(null);
+            }
+          }
+        } catch {
+          // ignore
+        }
+      };
+      window.addEventListener("message", handler);
+
+      // 토스 네이티브에 로그인 요청
+      sendTossBridge("appLogin", { scope: ["profile", "name"] });
+
+      // 60초 타임아웃 (사용자가 동의 화면에서 오래 머물 수 있음)
+      setTimeout(() => {
+        window.removeEventListener("message", handler);
+        resolve(null);
+      }, 60000);
+    } else {
+      // 웹 환경: 즉시 게스트 로그인
+      resolve({
+        id: "guest_" + Date.now(),
+        name: "게스트",
+      });
+    }
+  });
 }

@@ -1,73 +1,140 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import Image from "next/image";
+import { useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import HistorySidebar from "@/components/HistorySidebar";
-import MessageBubble from "@/components/MessageBubble";
-import TypingIndicator from "@/components/TypingIndicator";
+import { requestTossLogin, type TossUser } from "@/lib/toss-bridge";
 
-interface Message {
-  id: string;
-  type: "user" | "ai" | "system";
-  content: string;
-  timestamp: Date;
-  isLoading?: boolean;
-  blogResult?: string;
-}
+type Platform = PlatformKey | null;
+type PlatformKey = "youtube" | "instagram-reels" | "instagram-feed";
+
+const PLATFORM_CONFIG: Record<PlatformKey, { title: string; placeholder: string; color: string; label: string }> = {
+  youtube: {
+    title: "유튜브 쇼츠를\n블로그로 변환해요",
+    placeholder: "유튜브 쇼츠 링크를 붙여넣으세요",
+    color: "#FF0000",
+    label: "유튜브 쇼츠",
+  },
+  "instagram-reels": {
+    title: "인스타그램 릴스를\n블로그로 변환해요",
+    placeholder: "인스타그램 릴스 링크를 붙여넣으세요",
+    color: "#E1306C",
+    label: "인스타그램 릴스",
+  },
+  "instagram-feed": {
+    title: "인스타그램 피드를\n블로그로 변환해요",
+    placeholder: "인스타그램 피드 링크를 붙여넣으세요",
+    color: "#E1306C",
+    label: "인스타그램 피드",
+  },
+};
 
 export default function Home() {
-  const [messages, setMessages] = useState<Message[]>([
-    { id: "welcome", type: "system", content: "", timestamp: new Date() },
-  ]);
+  const router = useRouter();
   const [inputUrl, setInputUrl] = useState("");
   const [isConverting, setIsConverting] = useState(false);
   const [credits, setCredits] = useState(3);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [selectedPlatform, setSelectedPlatform] = useState<Platform>(null);
+  const [uploadedImages, setUploadedImages] = useState<{ file: File; preview: string }[]>([]);
+  const [linkChip, setLinkChip] = useState<{ platform: "youtube" | "instagram"; title: string; url: string } | null>(null);
+  const [user, setUser] = useState<TossUser | null>(null);
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  const YOUTUBE_RE = /https?:\/\/(?:www\.)?(?:youtube\.com\/shorts\/|youtu\.be\/)([a-zA-Z0-9_-]+)/;
+  const INSTAGRAM_RE = /https?:\/\/(?:www\.)?instagram\.com\/(reel|reels|p)\/([a-zA-Z0-9_-]+)/;
+
+  const detectLink = (text: string): boolean => {
+    const trimmed = text.trim();
+    const ytMatch = trimmed.match(YOUTUBE_RE);
+    if (ytMatch) {
+      setLinkChip({ platform: "youtube", title: `youtube.com/shorts/${ytMatch[1]}`, url: trimmed });
+      setInputUrl("");
+      return true;
+    }
+    const igMatch = trimmed.match(INSTAGRAM_RE);
+    if (igMatch) {
+      setLinkChip({ platform: "instagram", title: `instagram.com/${igMatch[1]}/${igMatch[2]}`, url: trimmed });
+      setInputUrl("");
+      return true;
+    }
+    return false;
   };
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+  const clearLinkChip = () => {
+    setLinkChip(null);
+  };
+
+  const handlePaste = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text) {
+        if (!detectLink(text)) {
+          setInputUrl(text);
+        }
+        textareaRef.current?.focus();
+      }
+    } catch {
+      textareaRef.current?.focus();
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInputUrl(e.target.value);
+  };
+
+  const handleTextareaPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const text = e.clipboardData.getData("text");
+    if (text && (YOUTUBE_RE.test(text) || INSTAGRAM_RE.test(text))) {
+      e.preventDefault();
+      detectLink(text);
+    }
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const newImages = Array.from(files).map((file) => ({
+        file,
+        preview: URL.createObjectURL(file),
+      }));
+      setUploadedImages((prev) => [...prev, ...newImages]);
+    }
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const removeImage = (index: number) => {
+    setUploadedImages((prev) => {
+      URL.revokeObjectURL(prev[index].preview);
+      return prev.filter((_, i) => i !== index);
+    });
+  };
+
+  const handleLogin = async () => {
+    const result = await requestTossLogin();
+    if (result) {
+      setUser(result);
+      setShowLoginModal(false);
+    }
+  };
 
   const handleConvert = async () => {
-    if (!inputUrl.trim() || isConverting) return;
-    const url = inputUrl.trim();
-    setInputUrl("");
+    const url = linkChip?.url || inputUrl.trim();
+    if (!url || isConverting) return;
 
-    const userMsg: Message = { id: Date.now().toString(), type: "user", content: url, timestamp: new Date() };
-    const loadingMsg: Message = { id: (Date.now() + 1).toString(), type: "ai", content: "", timestamp: new Date(), isLoading: true };
-
-    setMessages((prev) => [...prev, userMsg, loadingMsg]);
-    setIsConverting(true);
-
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 3000));
-      const blogContent = generateSampleBlog();
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === loadingMsg.id
-            ? { ...msg, isLoading: false, content: "변환이 완료됐어요! 아래에서 결과를 확인하세요.", blogResult: blogContent }
-            : msg
-        )
-      );
-      setCredits((prev) => Math.max(0, prev - 1));
-    } catch {
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === loadingMsg.id
-            ? { ...msg, isLoading: false, content: "변환 중 문제가 생겼어요. 다시 시도해주세요." }
-            : msg
-        )
-      );
-    } finally {
-      setIsConverting(false);
+    // 로그인 필요
+    if (!user) {
+      setShowLoginModal(true);
+      return;
     }
+
+    setIsConverting(true);
+    setCredits((prev) => Math.max(0, prev - 1));
+    router.push(`/result?url=${encodeURIComponent(url)}`);
+    setIsConverting(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -77,208 +144,271 @@ export default function Home() {
     }
   };
 
-  const hasMessages = messages.filter((m) => m.type !== "system").length > 0;
+  const handlePlatformSelect = (platform: Platform) => {
+    setSelectedPlatform(platform);
+    textareaRef.current?.focus();
+  };
 
+  const currentTitle = selectedPlatform
+    ? PLATFORM_CONFIG[selectedPlatform].title
+    : "무엇을 변환할까요?";
+
+  const currentPlaceholder = selectedPlatform
+    ? PLATFORM_CONFIG[selectedPlatform].placeholder
+    : "영상 링크를 붙여넣으세요";
+
+  // ── Input View ──
   return (
-    <div className="flex flex-col h-dvh bg-white">
-      <Header credits={credits} onMenuClick={() => setSidebarOpen(true)} />
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#FFFFFF' }}>
+      <Header
+        onMenuClick={() => setSidebarOpen(true)}
+        selectedPlatform={selectedPlatform}
+        onPlatformChange={(p) => handlePlatformSelect(p as Platform)}
+      />
       <HistorySidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      <main className="flex-1 overflow-y-auto">
-        {!hasMessages ? (
-          <div className="flex flex-col h-full animate-fade-in-up">
-            {/* Plan Badge */}
-            <div className="flex justify-center pt-8 pb-5">
-              <div className="inline-flex items-center border border-black/12 rounded-full overflow-hidden">
-                <span className="pl-4 pr-2 py-2 text-[13px] text-black/50 font-medium">무료 {credits}회</span>
-                <span className="w-px h-3.5 bg-black/15" />
-                <a href="/credits" className="pl-2 pr-4 py-2 text-[13px] text-[var(--color-brand)] font-bold">
-                  충전하기
-                </a>
-              </div>
-            </div>
+      <main style={{ flex: 1, overflowY: 'auto' }}>
+        <div className="animate-fade-in-up" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
 
-            {/* Title */}
-            <div className="text-center px-5 pb-6">
-              <h1 className="text-[28px] font-extrabold tracking-tight leading-tight">
-                무엇을 변환할까요?
-              </h1>
+          {/* ── Plan Badge ── */}
+          <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 100 }}>
+            <div className="plan-badge">
+              <span className="plan-badge__label">{user ? `${user.name} · 무료 플랜` : "무료 플랜"}</span>
+              <span className="plan-badge__divider" />
+              <a href="/credits" className="plan-badge__action">업그레이드</a>
             </div>
+          </div>
 
-            {/* Input Card */}
-            <div className="px-5 pb-4">
-              <div className="border border-black/15 rounded-2xl bg-white overflow-hidden" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-                <textarea
-                  ref={textareaRef}
-                  value={inputUrl}
-                  onChange={(e) => setInputUrl(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="작업을 할당하거나 무엇이든 질문하세요"
-                  disabled={isConverting}
-                  rows={4}
-                  className="w-full px-5 pt-5 pb-3 text-[15px] placeholder:text-black/30 focus:outline-none resize-none disabled:opacity-40 bg-transparent leading-relaxed"
-                />
-                <div className="flex items-center justify-between px-3 pb-3">
-                  <div className="flex items-center gap-0.5">
-                    <button
-                      onClick={() => setInputUrl("https://youtube.com/shorts/")}
-                      className="w-10 h-10 rounded-xl flex items-center justify-center hover:bg-black/5 press-effect transition-colors"
-                    >
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                        <path d="M12 5v14M5 12h14" stroke="black" strokeWidth="1.8" strokeLinecap="round" opacity="0.35"/>
-                      </svg>
-                    </button>
-                    <button className="w-10 h-10 rounded-xl flex items-center justify-center hover:bg-black/5 press-effect transition-colors">
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                        <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" stroke="black" strokeWidth="1.8" strokeLinecap="round" opacity="0.35"/>
-                        <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" stroke="black" strokeWidth="1.8" strokeLinecap="round" opacity="0.35"/>
-                      </svg>
-                    </button>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <button className="w-10 h-10 rounded-xl flex items-center justify-center hover:bg-black/5 press-effect transition-colors">
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                        <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" stroke="black" strokeWidth="1.8" strokeLinecap="round" opacity="0.35"/>
-                        <path d="M19 10v2a7 7 0 01-14 0v-2" stroke="black" strokeWidth="1.8" strokeLinecap="round" opacity="0.35"/>
-                        <path d="M12 19v4M8 23h8" stroke="black" strokeWidth="1.8" strokeLinecap="round" opacity="0.35"/>
-                      </svg>
-                    </button>
-                    <button
-                      onClick={handleConvert}
-                      disabled={!inputUrl.trim() || isConverting || credits <= 0}
-                      className="w-10 h-10 rounded-xl bg-[var(--color-brand)] flex items-center justify-center press-effect disabled:opacity-20 transition-opacity"
-                    >
-                      {isConverting ? (
-                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          {/* ── Title Section ── */}
+          <div style={{ padding: '80px 24px 28px' }}>
+            <h1 style={{ fontSize: 32, fontWeight: 800, letterSpacing: '-0.02em', color: '#000', whiteSpace: 'pre-line', lineHeight: 1.35 }}>
+              {currentTitle}
+            </h1>
+            <p style={{ fontSize: 16, color: 'rgba(0,0,0,0.35)', marginTop: 10 }}>
+              영상 링크를 넣으면 네이버 블로그 글로 변환해드려요
+            </p>
+          </div>
+
+          {/* ── Input Card ── */}
+          <div style={{ padding: '0 20px 16px' }}>
+            <div className="input-card">
+              {/* Link Chip + Images */}
+              {(linkChip || uploadedImages.length > 0) && (
+                <div style={{ padding: '16px 16px 0', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                  {linkChip && (
+                    <div style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '8px 12px',
+                      background: 'rgba(0,0,0,0.04)',
+                      borderRadius: 9999,
+                      border: '1px solid rgba(0,0,0,0.06)',
+                      maxWidth: '100%',
+                    }}>
+                      {linkChip.platform === "youtube" ? (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
+                          <rect x="2" y="4" width="20" height="16" rx="4" fill="#FF0000"/>
+                          <path d="M10 8.5l6 3.5-6 3.5V8.5z" fill="#fff"/>
+                        </svg>
                       ) : (
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                          <path d="M12 19V5M5 12l7-7 7 7" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
+                          <rect x="2" y="2" width="20" height="20" rx="6" stroke="#E1306C" strokeWidth="1.5"/>
+                          <circle cx="12" cy="12" r="5" stroke="#E1306C" strokeWidth="1.5"/>
+                          <circle cx="18" cy="6" r="1.5" fill="#E1306C"/>
                         </svg>
                       )}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Quick Action Chips */}
-            <div className="px-5 pb-5">
-              <div className="flex flex-wrap gap-2.5 justify-center">
-                <button
-                  onClick={() => setInputUrl("https://youtube.com/shorts/")}
-                  className="inline-flex items-center gap-2.5 px-5 py-3 border border-black/10 bg-black/4 rounded-full press-effect hover:bg-black/8 transition-colors"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="black" opacity="0.5">
-                    <path d="M23.5 6.19a3.02 3.02 0 00-2.12-2.14C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.38.55A3.02 3.02 0 00.5 6.19 31.6 31.6 0 000 12a31.6 31.6 0 00.5 5.81 3.02 3.02 0 002.12 2.14c1.88.55 9.38.55 9.38.55s7.5 0 9.38-.55a3.02 3.02 0 002.12-2.14A31.6 31.6 0 0024 12a31.6 31.6 0 00-.5-5.81zM9.75 15.02V8.98L15.5 12l-5.75 3.02z"/>
-                  </svg>
-                  <span className="text-[14px] font-semibold">YouTube Shorts</span>
-                </button>
-                <button
-                  onClick={() => setInputUrl("https://instagram.com/reel/")}
-                  className="inline-flex items-center gap-2.5 px-5 py-3 border border-black/10 bg-black/4 rounded-full press-effect hover:bg-black/8 transition-colors"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" opacity="0.5">
-                    <rect x="2" y="2" width="20" height="20" rx="6" stroke="black" strokeWidth="2"/>
-                    <circle cx="12" cy="12" r="5" stroke="black" strokeWidth="2"/>
-                  </svg>
-                  <span className="text-[14px] font-semibold">Instagram Reels</span>
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-2.5 justify-center mt-2.5">
-                <a
-                  href="/convert"
-                  className="inline-flex items-center gap-2 px-5 py-3 border border-black/10 bg-black/4 rounded-full press-effect hover:bg-black/8 transition-colors"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" opacity="0.5">
-                    <path d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z" stroke="black" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  <span className="text-[14px] font-semibold">톤 설정</span>
-                </a>
-                <a
-                  href="/credits"
-                  className="inline-flex items-center gap-2 px-5 py-3 border border-black/10 bg-black/4 rounded-full press-effect hover:bg-black/8 transition-colors"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" opacity="0.5">
-                    <circle cx="12" cy="12" r="10" stroke="black" strokeWidth="1.8"/>
-                    <path d="M12 6v12M6 12h12" stroke="black" strokeWidth="1.8" strokeLinecap="round"/>
-                  </svg>
-                  <span className="text-[14px] font-semibold">크레딧 충전</span>
-                </a>
-                <button className="inline-flex items-center px-5 py-3 border border-black/10 bg-black/4 rounded-full press-effect hover:bg-black/8 transition-colors">
-                  <span className="text-[14px] font-semibold text-black/40">더보기</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Spacer */}
-            <div className="flex-1" />
-
-            {/* Bottom Banner */}
-            <div className="px-5 pb-6">
-              <div className="rounded-2xl p-5" style={{ backgroundColor: '#ECECEC' }}>
-                <p className="text-[11px] font-bold text-black/30 uppercase tracking-widest mb-2">TIP</p>
-                <p className="text-[15px] font-bold leading-relaxed">
-                  유튜브 쇼츠 · 인스타 릴스 링크를<br/>
-                  붙여넣으면 AI가 네이버 블로그<br/>
-                  SEO 최적화 글로 변환해요
-                </p>
-                <div className="flex items-center gap-2 mt-3">
-                  {["SEO", "이모지", "해시태그"].map((tag) => (
-                    <span
-                      key={tag}
-                      className="text-[11px] font-bold text-[var(--color-brand)] px-2.5 py-1 rounded-md"
-                      style={{ backgroundColor: 'rgba(107, 92, 231, 0.08)' }}
-                    >
-                      {tag}
-                    </span>
+                      <span style={{
+                        fontSize: 13,
+                        fontWeight: 500,
+                        color: 'rgba(0,0,0,0.7)',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}>
+                        {linkChip.title}
+                      </span>
+                      <button
+                        onClick={clearLinkChip}
+                        style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          width: 18, height: 18, border: 'none', background: 'none',
+                          cursor: 'pointer', flexShrink: 0, padding: 0,
+                        }}
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                          <path d="M18 6L6 18M6 6l12 12" stroke="rgba(0,0,0,0.3)" strokeWidth="2" strokeLinecap="round"/>
+                        </svg>
+                      </button>
+                    </div>
+                  )}
+                  {uploadedImages.map((img, i) => (
+                    <div key={i} style={{ position: 'relative', width: 80, height: 80, borderRadius: 12, overflow: 'hidden', flexShrink: 0 }}>
+                      <img src={img.preview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <button
+                        onClick={() => removeImage(i)}
+                        style={{
+                          position: 'absolute', top: 4, right: 4, width: 22, height: 22,
+                          borderRadius: '50%', background: 'rgba(0,0,0,0.6)', border: 'none',
+                          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}
+                      >
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
+                          <path d="M18 6L6 18M6 6l12 12" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"/>
+                        </svg>
+                      </button>
+                    </div>
                   ))}
                 </div>
+              )}
+              <textarea
+                ref={textareaRef}
+                value={inputUrl}
+                onChange={handleInputChange}
+                onKeyDown={handleKeyDown}
+                onPaste={handleTextareaPaste}
+                placeholder={linkChip ? "추가 메모를 입력하세요" : currentPlaceholder}
+                disabled={isConverting}
+                rows={linkChip ? 1 : 1}
+              />
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleImageUpload}
+                style={{ display: 'none' }}
+              />
+              <div className="input-toolbar">
+                <div className="toolbar-group">
+                  <button className="toolbar-circle" onClick={() => fileInputRef.current?.click()}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                      <path d="M12 5v14M5 12h14" stroke="#000" strokeWidth="1.8" strokeLinecap="round" opacity="0.3"/>
+                    </svg>
+                  </button>
+                  <button className="toolbar-circle" onClick={handlePaste}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                      <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" stroke="#000" strokeWidth="1.8" strokeLinecap="round" opacity="0.3"/>
+                      <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" stroke="#000" strokeWidth="1.8" strokeLinecap="round" opacity="0.3"/>
+                    </svg>
+                  </button>
+                </div>
+                <div className="toolbar-group">
+                  <button
+                    className="send-btn"
+                    onClick={handleConvert}
+                    disabled={(!inputUrl.trim() && !linkChip) || isConverting || credits <= 0}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                      <path d="M12 19V5M5 12l7-7 7 7" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        ) : (
-          <div className="px-5 py-4 space-y-5">
-            {messages
-              .filter((m) => m.type !== "system")
-              .map((message, index) => (
-                <div
-                  key={message.id}
-                  className="animate-fade-in-up"
-                  style={{ animationDelay: `${index * 0.05}s` }}
-                >
-                  {message.isLoading ? <TypingIndicator /> : <MessageBubble message={message} />}
-                </div>
-              ))}
-            <div ref={messagesEndRef} />
+
+          {/* ── Quick Links ── */}
+          <div style={{ padding: '0 20px 20px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
+              <a href="/convert" className="action-chip">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                  <path d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z" stroke="#000" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" opacity="0.4"/>
+                </svg>
+                톤 설정
+              </a>
+            </div>
           </div>
-        )}
+        </div>
       </main>
 
-      {/* Input bar for message mode */}
-      {hasMessages && (
-        <div className="bg-white px-5 py-3 border-t border-black/8">
-          <div className="flex items-center gap-2.5">
-            <input
-              type="url"
-              value={inputUrl}
-              onChange={(e) => setInputUrl(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="영상 링크를 붙여넣으세요"
-              disabled={isConverting}
-              className="flex-1 bg-[var(--color-surface-secondary)] rounded-xl px-4 py-3 text-[15px] placeholder:text-black/30 focus:outline-none focus:ring-2 focus:ring-[var(--color-brand)]/30 transition-all disabled:opacity-40"
-            />
-            <button
-              onClick={handleConvert}
-              disabled={!inputUrl.trim() || isConverting || credits <= 0}
-              className="flex-shrink-0 w-11 h-11 rounded-xl bg-[var(--color-brand)] flex items-center justify-center press-effect disabled:opacity-20"
-            >
-              {isConverting ? (
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                  <path d="M12 19V5M5 12l7-7 7 7" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+      {/* ── Login Modal ── */}
+      {showLoginModal && (
+        <div
+          onClick={() => setShowLoginModal(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 200,
+            background: 'rgba(0,0,0,0.4)',
+            display: 'flex',
+            alignItems: 'flex-end',
+            justifyContent: 'center',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: '100%',
+              maxWidth: 480,
+              background: '#FFFFFF',
+              borderRadius: '24px 24px 0 0',
+              padding: '32px 24px',
+              paddingBottom: 'calc(32px + env(safe-area-inset-bottom, 0px))',
+            }}
+          >
+            <div style={{ textAlign: 'center', marginBottom: 24 }}>
+              <div style={{
+                width: 56,
+                height: 56,
+                borderRadius: '50%',
+                background: 'rgba(107,92,231,0.08)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 16px',
+              }}>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="8" r="4" stroke="#6B5CE7" strokeWidth="1.5"/>
+                  <path d="M4 20c0-3.3 3.6-6 8-6s8 2.7 8 6" stroke="#6B5CE7" strokeWidth="1.5" strokeLinecap="round"/>
                 </svg>
-              )}
+              </div>
+              <p style={{ fontSize: 18, fontWeight: 800, color: '#000', marginBottom: 6 }}>
+                로그인이 필요해요
+              </p>
+              <p style={{ fontSize: 14, color: 'rgba(0,0,0,0.4)', lineHeight: 1.5 }}>
+                변환 기능을 사용하려면<br />토스 계정으로 로그인해주세요
+              </p>
+            </div>
+
+            <button
+              onClick={handleLogin}
+              className="press-effect"
+              style={{
+                width: '100%',
+                height: 52,
+                borderRadius: 14,
+                background: '#0064FF',
+                color: '#FFFFFF',
+                fontSize: 16,
+                fontWeight: 700,
+                border: 'none',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                letterSpacing: 'inherit',
+                marginBottom: 10,
+              }}
+            >
+              토스로 로그인
+            </button>
+            <button
+              onClick={() => setShowLoginModal(false)}
+              className="press-effect"
+              style={{
+                width: '100%',
+                height: 44,
+                borderRadius: 14,
+                background: 'rgba(0,0,0,0.04)',
+                color: 'rgba(0,0,0,0.4)',
+                fontSize: 14,
+                fontWeight: 600,
+                border: 'none',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                letterSpacing: 'inherit',
+              }}
+            >
+              나중에 할게요
             </button>
           </div>
         </div>
@@ -287,35 +417,3 @@ export default function Home() {
   );
 }
 
-function generateSampleBlog(): string {
-  return `## 이런 꿀팁 몰랐죠? 지금 바로 확인하세요! 🔥
-
-안녕하세요 여러분! 오늘은 정말 유용한 정보를 가져왔어요.
-최근에 화제가 된 영상을 보고, 꼭 공유하고 싶었거든요 😊
-
-### 핵심 포인트 정리 📌
-
-영상에서 다룬 핵심 내용을 정리해봤어요.
-하나하나 따라하면 여러분도 충분히 할 수 있답니다!
-
-1. **첫 번째 포인트** - 시작이 반이에요
-2. **두 번째 포인트** - 꾸준함이 중요해요
-3. **세 번째 포인트** - 작은 습관이 큰 변화를 만들어요
-
-### 실전 적용 방법 💡
-
-이론만으로는 부족하죠!
-실제로 어떻게 적용하면 되는지 알려드릴게요.
-
-매일 10분만 투자해보세요.
-한 달 후면 확실한 변화를 느끼실 거예요 ✨
-
-### 마무리 한마디 🎯
-
-오늘 공유한 내용이 도움이 되셨다면
-좋아요와 이웃 추가 부탁드려요!
-
-궁금한 점은 댓글로 남겨주세요 💬
-
-#꿀팁 #정보공유 #일상 #추천 #트렌드`;
-}

@@ -24,8 +24,8 @@ html {
 }
 
 body {
-  background: var(--color-background);
-  color: var(--color-foreground);
+  background: #FFFFFF;
+  color: #000000;
   font-family: var(--font-sans);
   min-height: 100dvh;
   overflow-x: hidden;
@@ -38,9 +38,178 @@ body { -ms-overflow-style: none; scrollbar-width: none; }
 .safe-area-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
 .safe-area-top { padding-top: env(safe-area-inset-top, 0px); }
 
+/* ===== Component Styles ===== */
+
+/* Plan Badge - Manus style pill */
+.plan-badge {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+.plan-badge__label {
+  padding: 6px 11px;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.45);
+  font-weight: 500;
+}
+.plan-badge__divider {
+  width: 1px;
+  height: 11px;
+  background: rgba(0, 0, 0, 0.1);
+}
+.plan-badge__action {
+  padding: 6px 11px;
+  font-size: 12px;
+  color: #6B5CE7;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+/* Input Card - Manus glass card */
+.input-card {
+  background: rgba(0, 0, 0, 0.025);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 24px;
+  overflow: hidden;
+}
+.input-card textarea {
+  display: block;
+  width: 100%;
+  padding: 24px 24px 16px;
+  font-size: 15px;
+  line-height: 1.6;
+  border: none;
+  outline: none;
+  resize: none !important;
+  -webkit-appearance: none;
+  background: transparent;
+  font-family: inherit;
+  letter-spacing: inherit;
+  color: #000;
+}
+.input-card textarea::placeholder {
+  color: rgba(0, 0, 0, 0.3);
+}
+.input-card textarea:disabled {
+  opacity: 0.4;
+}
+
+/* Toolbar - circular buttons like Manus */
+.input-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px 16px;
+}
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.toolbar-circle {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(0, 0, 0, 0.03);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.toolbar-circle:hover {
+  background: rgba(0, 0, 0, 0.07);
+}
+.toolbar-circle:active {
+  transform: scale(0.93);
+}
+
+/* Send Button */
+.send-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #6B5CE7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.12s;
+}
+.send-btn:disabled {
+  opacity: 0.15;
+  cursor: not-allowed;
+}
+.send-btn:active:not(:disabled) {
+  transform: scale(0.93);
+}
+
+/* Action Chips - Manus style */
+.action-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  border-radius: 9999px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #000;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+.action-chip:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+.action-chip:active {
+  transform: scale(0.96);
+  opacity: 0.7;
+}
+.action-chip--muted {
+  color: rgba(0, 0, 0, 0.35);
+}
+
+/* Tip Banner */
+.tip-banner {
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+.tip-banner__label {
+  font-size: 9px;
+  font-weight: 700;
+  color: rgba(0, 0, 0, 0.2);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 4px;
+}
+.tip-banner__text {
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: rgba(0, 0, 0, 0.45);
+}
+.tip-tag {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  color: #6B5CE7;
+  background: rgba(107, 92, 231, 0.08);
+  padding: 3px 8px;
+  border-radius: 5px;
+}
+
 /* Animations */
 @keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
@@ -55,11 +224,11 @@ body { -ms-overflow-style: none; scrollbar-width: none; }
 }
 
 .animate-fade-in-up {
-  animation: fadeInUp 0.35s cubic-bezier(0.33, 1, 0.68, 1) forwards;
+  animation: fadeInUp 0.4s cubic-bezier(0.33, 1, 0.68, 1) forwards;
 }
 
 .animate-fade-in {
-  animation: fadeIn 0.25s ease-out forwards;
+  animation: fadeIn 0.3s ease-out forwards;
 }
 
 /* Typing dots */
@@ -68,7 +237,7 @@ body { -ms-overflow-style: none; scrollbar-width: none; }
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: var(--color-brand);
+  background: #6B5CE7;
   animation: pulse-dot 1.4s infinite ease-in-out both;
 }
 .typing-dot:nth-child(1) { animation-delay: 0s; }
@@ -77,14 +246,14 @@ body { -ms-overflow-style: none; scrollbar-width: none; }
 
 /* Message bubbles */
 .message-ai {
-  background: var(--color-surface-secondary);
-  border-radius: 2px 16px 16px 16px;
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 4px 20px 20px 20px;
 }
 
 .message-user {
-  background: var(--color-foreground);
+  background: #000000;
   color: white;
-  border-radius: 16px 16px 2px 16px;
+  border-radius: 20px 20px 4px 20px;
 }
 
 /* Blog result */

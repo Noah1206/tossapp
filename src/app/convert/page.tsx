@@ -4,99 +4,122 @@ import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Header from "@/components/Header";
 
+const TONE_ICONS: Record<string, string> = {
+  friendly: "M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z",
+  professional: "M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2zM16 3H8l-2 4h12l-2-4z",
+  casual: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-1-1 3-3-3-3 1-1 4 4-4 4zm4 0l4-4-4-4-1 1 3 3-3 3 1 1z",
+  energetic: "M13 2L3 14h9l-1 10 10-12h-9l1-10z",
+};
+
 function ConvertContent() {
   const searchParams = useSearchParams();
   const url = searchParams.get("url") || "";
   const [tone, setTone] = useState("friendly");
-  const credits = 3;
 
   const tones = [
-    { key: "friendly", label: "친근한", desc: "편안하고 다가가기 쉬운" },
-    { key: "professional", label: "전문적인", desc: "신뢰감 있고 깔끔한" },
-    { key: "casual", label: "가벼운", desc: "재밌고 가볍게 읽히는" },
-    { key: "energetic", label: "활기찬", desc: "에너지 넘치고 역동적인" },
+    { key: "friendly", label: "친근한", desc: "편안하고 다가가기 쉬운 톤", color: "#FF6B6B" },
+    { key: "professional", label: "전문적인", desc: "신뢰감 있고 깔끔한 톤", color: "#4DABF7" },
+    { key: "casual", label: "가벼운", desc: "재밌고 가볍게 읽히는 톤", color: "#51CF66" },
+    { key: "energetic", label: "활기찬", desc: "에너지 넘치고 역동적인 톤", color: "#FFB43A" },
   ];
 
   return (
-    <div className="flex flex-col h-dvh bg-white">
-      <Header credits={credits} title="변환 설정" showBack />
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#FFFFFF' }}>
+      <Header title="변환 설정" showBack />
 
-      <main className="flex-1 overflow-y-auto px-5 py-5">
-        {/* URL Card */}
-        <div className="border border-[var(--color-border)] rounded-xl p-4 mb-6">
-          <p className="text-[11px] font-medium text-black/30 mb-2 uppercase tracking-wider">변환할 영상</p>
-          <div className="flex items-center gap-3">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="flex-shrink-0 opacity-30">
-              <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" stroke="black" strokeWidth="1.8" strokeLinecap="round"/>
-              <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" stroke="black" strokeWidth="1.8" strokeLinecap="round"/>
-            </svg>
-            <p className="text-[13px] break-all flex-1 leading-relaxed">
-              {url || "URL을 입력해주세요"}
-            </p>
-          </div>
-        </div>
-
+      <main style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
         {/* Tone Selection */}
-        <div className="mb-6">
-          <p className="text-[14px] font-bold mb-3">글 톤 선택</p>
-          <div className="space-y-2">
-            {tones.map((t) => (
-              <button
-                key={t.key}
-                onClick={() => setTone(t.key)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all press-effect ${
-                  tone === t.key
-                    ? "bg-[var(--color-surface-secondary)] ring-1 ring-black/10"
-                    : "bg-white border border-[var(--color-border)]"
-                }`}
-              >
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-[13px] ${
-                  tone === t.key
-                    ? "bg-[var(--color-brand)] text-white"
-                    : "bg-[var(--color-surface-secondary)] text-black/40"
-                }`}>
-                  {t.label.charAt(0)}
-                </div>
-                <div className="text-left flex-1">
-                  <p className="text-[14px] font-semibold">{t.label}</p>
-                  <p className="text-[12px] text-black/40 mt-0.5">{t.desc}</p>
-                </div>
-                <div
-                  className={`w-5 h-5 rounded-full border-[1.5px] flex items-center justify-center ${
-                    tone === t.key
-                      ? "border-[var(--color-brand)] bg-[var(--color-brand)]"
-                      : "border-black/15"
-                  }`}
-                >
-                  {tone === t.key && (
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
-                      <path d="M20 6L9 17l-5-5" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  )}
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Tip */}
-        <div className="border border-[var(--color-border)] rounded-xl p-4">
-          <p className="text-[12px] font-semibold text-black/40 mb-1">TIP</p>
-          <p className="text-[12px] text-black/40 leading-relaxed">
-            AI가 영상을 분석하여 네이버 블로그에 최적화된 글을 작성해요. SEO 키워드, 이모지, 해시태그가 자동 포함됩니다.
+        <div>
+          <p style={{ fontSize: 24, fontWeight: 800, color: '#000', marginBottom: 8 }}>
+            글 톤을 선택해주세요
           </p>
+          <p style={{ fontSize: 16, color: 'rgba(0,0,0,0.4)', marginBottom: 28, lineHeight: 1.5 }}>
+            타겟 고객에 맞는 톤으로 변환해드려요
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            {tones.map((t) => {
+              const isSelected = tone === t.key;
+              return (
+                <button
+                  key={t.key}
+                  onClick={() => setTone(t.key)}
+                  className="press-effect"
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-start',
+                    padding: '16px 14px',
+                    borderRadius: 16,
+                    border: isSelected ? `1.5px solid ${t.color}` : '1px solid rgba(0,0,0,0.07)',
+                    background: isSelected ? `${t.color}08` : 'rgba(0,0,0,0.015)',
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    letterSpacing: 'inherit',
+                    transition: 'all 0.15s',
+                    textAlign: 'left',
+                  }}
+                >
+                  <div style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 12,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: isSelected ? t.color : 'rgba(0,0,0,0.06)',
+                    marginBottom: 12,
+                    transition: 'all 0.15s',
+                  }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill={isSelected ? '#FFFFFF' : 'rgba(0,0,0,0.3)'}>
+                      <path d={TONE_ICONS[t.key]} />
+                    </svg>
+                  </div>
+                  <p style={{
+                    fontSize: 14,
+                    fontWeight: 700,
+                    color: isSelected ? t.color : '#000',
+                    transition: 'color 0.15s',
+                  }}>
+                    {t.label}
+                  </p>
+                  <p style={{
+                    fontSize: 11,
+                    color: 'rgba(0,0,0,0.35)',
+                    marginTop: 3,
+                    lineHeight: 1.4,
+                  }}>
+                    {t.desc}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </main>
 
       {/* CTA */}
-      <div className="bg-white px-5 py-4 border-t border-[var(--color-border)]">
-        <button className="w-full h-[48px] rounded-lg bg-[var(--color-brand)] text-white text-[15px] font-bold press-effect flex items-center justify-center gap-2">
+      <div style={{ background: '#FFFFFF', padding: '16px 20px', borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+        <button
+          className="press-effect"
+          style={{
+            width: '100%',
+            height: 48,
+            borderRadius: 14,
+            background: '#6B5CE7',
+            color: '#FFFFFF',
+            fontSize: 15,
+            fontWeight: 700,
+            border: 'none',
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+            letterSpacing: 'inherit',
+          }}
+        >
           변환하기
         </button>
-        <p className="text-[11px] text-black/30 text-center mt-2">
+        <p style={{ fontSize: 11, color: 'rgba(0,0,0,0.3)', textAlign: 'center', marginTop: 8 }}>
           1 크레딧 차감
         </p>
-        <div className="safe-area-bottom" />
       </div>
     </div>
   );
