@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import HistorySidebar from "@/components/HistorySidebar";
@@ -34,17 +34,61 @@ export default function Home() {
   const router = useRouter();
   const [inputUrl, setInputUrl] = useState("");
   const [isConverting, setIsConverting] = useState(false);
-  const [credits, setCredits] = useState(3);
+  // 유료화 시 복원
+  // const [credits, setCredits] = useState<number | null>(null);
+  // const [plan, setPlan] = useState("free");
+  // const [trial, setTrial] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedPlatform, setSelectedPlatform] = useState<Platform>(null);
   const [uploadedImages, setUploadedImages] = useState<{ file: File; preview: string }[]>([]);
   const [linkChip, setLinkChip] = useState<{ platform: "youtube" | "instagram"; title: string; url: string } | null>(null);
   const [user, setUser] = useState<TossUser | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  // 유료화 시 복원
+  // const [showPricingModal, setShowPricingModal] = useState(false);
+  // const [pricingClosing, setPricingClosing] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [refreshKey, setRefreshKey] = useState(0);
+
+  /* 유료화 시 복원
+  const fetchCredits = (userId: string) => {
+    fetch(`/api/credits?userId=${userId}`)
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.data) {
+          setCredits(res.data.credits);
+          setPlan(res.data.plan);
+          setTrial(res.data.trial === true);
+        }
+      })
+      .catch(() => {});
+  };
+  */
+
+  // 페이지 진입 시: 로그인 복원
+  useEffect(() => {
+    try {
+      const savedId = localStorage.getItem("toss_user_id");
+      const savedName = localStorage.getItem("toss_user_name");
+      if (savedId) {
+        setUser({ id: savedId, name: savedName || "사용자" });
+        setRefreshKey((k) => k + 1);
+      }
+    } catch {}
+  }, []);
+
+  /* 유료화 시 복원
+  const closePricing = (cb?: () => void) => {
+    setPricingClosing(true);
+    setTimeout(() => {
+      setShowPricingModal(false);
+      setPricingClosing(false);
+      cb?.();
+    }, 300);
+  };
+  */
 
   const handleHistoryItemClick = useCallback((item: { sourceUrl: string }) => {
     setSidebarOpen(false);
@@ -125,7 +169,11 @@ export default function Home() {
     if (result) {
       setUser(result);
       setShowLoginModal(false);
-      try { localStorage.setItem("toss_user_id", result.id); } catch {}
+      // fetchCredits(result.id); // 유료화 시 복원
+      try {
+        localStorage.setItem("toss_user_id", result.id);
+        localStorage.setItem("toss_user_name", result.name);
+      } catch {}
     }
   };
 
@@ -133,14 +181,41 @@ export default function Home() {
     const url = linkChip?.url || inputUrl.trim();
     if (!url || isConverting) return;
 
-    // 로그인 필요
     if (!user) {
       setShowLoginModal(true);
       return;
     }
 
+    /* 유료화 시 복원 - 크레딧 차감 로직
+    if (plan !== "pro") {
+      if (!trial && credits !== null && credits <= 0) {
+        router.push("/credits");
+        return;
+      }
+      if (!trial && credits !== null && credits > 0) {
+        setIsConverting(true);
+        try {
+          const res = await fetch("/api/credits", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId: user.id, amount: -1, reason: "convert" }),
+          });
+          const result = await res.json();
+          if (!res.ok) {
+            alert(result.message || "크레딧이 부족합니다");
+            setIsConverting(false);
+            return;
+          }
+          setCredits(result.data.credits);
+        } catch {
+          setIsConverting(false);
+          return;
+        }
+      }
+    }
+    */
+
     setIsConverting(true);
-    setCredits((prev) => Math.max(0, prev - 1));
     router.push(`/result?url=${encodeURIComponent(url)}`);
     setIsConverting(false);
   };
@@ -187,14 +262,12 @@ export default function Home() {
           {/* ── Plan Badge ── */}
           <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 80 }}>
             <div className="plan-badge">
-              <span className="plan-badge__label">{user ? `${user.name} · 무료 플랜` : "무료 플랜"}</span>
-              <span className="plan-badge__divider" />
-              <a href="/credits" className="plan-badge__action">업그레이드</a>
+              <span className="plan-badge__label">{user ? `${user.name} · 무제한 무료` : "무료 이용 가능"}</span>
             </div>
           </div>
 
           {/* ── Title Section ── */}
-          <div style={{ padding: '200px 24px 28px' }}>
+          <div style={{ padding: '40px 24px 28px' }}>
             <h1 style={{ fontSize: 32, fontWeight: 800, letterSpacing: '-0.02em', color: '#000', whiteSpace: 'pre-line', lineHeight: 1.35 }}>
               {currentTitle}
             </h1>
@@ -311,7 +384,7 @@ export default function Home() {
                   <button
                     className="send-btn"
                     onClick={handleConvert}
-                    disabled={(!inputUrl.trim() && !linkChip) || isConverting || credits <= 0}
+                    disabled={(!inputUrl.trim() && !linkChip) || isConverting}
                   >
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                       <path d="M12 19V5M5 12l7-7 7 7" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -323,7 +396,7 @@ export default function Home() {
           </div>
 
           {/* ── Quick Links ── */}
-          <div style={{ padding: '24px 20px 20px' }}>
+          <div style={{ padding: '0 20px 20px', marginTop: -8 }}>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
               <a href="/convert" className="action-chip">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
@@ -335,6 +408,8 @@ export default function Home() {
           </div>
         </div>
       </main>
+
+      {/* ── Pricing Modal - 유료화 시 복원 ── */}
 
       {/* ── Login Modal ── */}
       {showLoginModal && (
@@ -348,6 +423,7 @@ export default function Home() {
             display: 'flex',
             alignItems: 'flex-end',
             justifyContent: 'center',
+            animation: 'loginBackdropIn 0.3s ease-out',
           }}
         >
           <div
@@ -359,6 +435,7 @@ export default function Home() {
               borderRadius: '24px 24px 0 0',
               padding: '32px 24px',
               paddingBottom: 'calc(32px + env(safe-area-inset-bottom, 0px))',
+              animation: 'loginSheetUp 0.35s cubic-bezier(0.33, 1, 0.68, 1)',
             }}
           >
             <div style={{ textAlign: 'center', marginBottom: 24 }}>

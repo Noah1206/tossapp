@@ -273,6 +273,27 @@ body { -ms-overflow-style: none; scrollbar-width: none; }
   padding-left: 16px;
 }
 
+/* Bottom sheet animations */
+@keyframes loginBackdropIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes loginSheetUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes pricingSheetUp {
+  from { transform: translateY(100%); opacity: 0.5; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes pricingFadeOut {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(100%); }
+}
+
 /* Press effect */
 .press-effect {
   transition: transform 0.12s cubic-bezier(0.33, 1, 0.68, 1), opacity 0.12s;

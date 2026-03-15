@@ -1,45 +1,38 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
 
 interface HistoryItem {
   id: string;
   platform: "youtube" | "instagram";
-  title: string;
-  preview: string;
-  createdAt: Date;
+  title: string | null;
+  preview: string | null;
+  sourceUrl: string;
+  createdAt: string;
 }
 
-const sampleHistory: HistoryItem[] = [
-  {
-    id: "1",
-    platform: "youtube",
-    title: "이런 꿀팁 몰랐죠? 지금 바로 확인하세요!",
-    preview: "안녕하세요 여러분! 오늘은 정말 유용한 정보를 가져왔어요...",
-    createdAt: new Date(Date.now() - 1000 * 60 * 30),
-  },
-  {
-    id: "2",
-    platform: "instagram",
-    title: "매일 아침 이것만 하면 달라져요",
-    preview: "최근 많은 분들이 물어보신 루틴을 정리해봤어요...",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 3),
-  },
-  {
-    id: "3",
-    platform: "youtube",
-    title: "이 운동 루틴 따라만 하세요",
-    preview: "헬스장 안가도 집에서 충분히 할 수 있는 루틴...",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24),
-  },
-];
-
 export default function HistoryPage() {
-  const [history] = useState<HistoryItem[]>(sampleHistory);
+  const router = useRouter();
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const formatTime = (date: Date) => {
-    const diff = Date.now() - date.getTime();
+  useEffect(() => {
+    const userId = localStorage.getItem("toss_user_id");
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
+    fetch(`/api/history?userId=${userId}&sort=newest`)
+      .then((r) => r.json())
+      .then((data) => setHistory(data.data || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const formatTime = (dateStr: string) => {
+    const diff = Date.now() - new Date(dateStr).getTime();
     const minutes = Math.floor(diff / (1000 * 60));
     if (minutes < 60) return `${minutes}분 전`;
     const hours = Math.floor(minutes / 60);
@@ -48,12 +41,29 @@ export default function HistoryPage() {
     return `${days}일 전`;
   };
 
+  const userId = typeof window !== "undefined" ? localStorage.getItem("toss_user_id") : null;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#FFFFFF' }}>
       <Header title="변환 내역" showBack />
 
       <main style={{ flex: 1, overflowY: 'auto' }}>
-        {history.length === 0 ? (
+        {loading ? (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <span className="typing-dot" />
+              <span className="typing-dot" />
+              <span className="typing-dot" />
+            </div>
+          </div>
+        ) : !userId ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '0 32px' }}>
+            <p style={{ fontSize: 15, fontWeight: 700 }}>로그인이 필요해요</p>
+            <p style={{ fontSize: 13, color: 'rgba(0,0,0,0.4)', marginTop: 4, textAlign: 'center' }}>
+              변환 내역을 보려면 로그인해주세요
+            </p>
+          </div>
+        ) : history.length === 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '0 32px' }}>
             <p style={{ fontSize: 15, fontWeight: 700 }}>아직 내역이 없어요</p>
             <p style={{ fontSize: 13, color: 'rgba(0,0,0,0.4)', marginTop: 4, textAlign: 'center' }}>
@@ -70,6 +80,7 @@ export default function HistoryPage() {
                 <button
                   key={item.id}
                   className="press-effect"
+                  onClick={() => router.push(`/result?url=${encodeURIComponent(item.sourceUrl)}`)}
                   style={{
                     width: '100%',
                     border: '1px solid rgba(0,0,0,0.08)',
@@ -87,8 +98,8 @@ export default function HistoryPage() {
                       <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="black" strokeWidth="1.5"/>
                     </svg>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontSize: 14, fontWeight: 600, color: '#000', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</p>
-                      <p style={{ fontSize: 12, color: 'rgba(0,0,0,0.4)', marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.preview}</p>
+                      <p style={{ fontSize: 14, fontWeight: 600, color: '#000', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title || "제목 없음"}</p>
+                      <p style={{ fontSize: 12, color: 'rgba(0,0,0,0.4)', marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.preview || item.sourceUrl}</p>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
                         <span style={{ fontSize: 11, color: 'rgba(0,0,0,0.3)' }}>{item.platform === "youtube" ? "유튜브" : "인스타그램"}</span>
                         <span style={{ fontSize: 11, color: 'rgba(0,0,0,0.2)' }}>·</span>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { share } from "@/lib/toss-bridge";
 
 interface BlogSection {
   emoji: string;
@@ -265,6 +266,20 @@ export default function BlogResult({ data, sourceUrl, onBack }: BlogResultProps)
             </svg>
           </button>
         )}
+        <button
+          onClick={() => share(data.blogTitle, data.summary, sourceUrl)}
+          className="press-effect"
+          style={{
+            width: 48, height: 48, borderRadius: 14,
+            background: 'rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.08)',
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+          title="공유하기"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13" stroke="rgba(0,0,0,0.4)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
         <button
           onClick={onBack}
           className="press-effect"

@@ -118,7 +118,7 @@ function ConvertContent() {
           변환하기
         </button>
         <p style={{ fontSize: 11, color: 'rgba(0,0,0,0.3)', textAlign: 'center', marginTop: 8 }}>
-          1 크레딧 차감
+          무료 이용 중
         </p>
       </div>
     </div>
