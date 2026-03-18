@@ -1,9 +1,10 @@
 "use client";
 
 import { Suspense, useState, useEffect, useRef } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import BlogResult from "@/components/BlogResult";
+import HistorySidebar from "@/components/HistorySidebar";
 
 interface BlogSection {
   emoji: string;
@@ -96,6 +97,7 @@ function ResultContent() {
   const searchParams = useSearchParams();
   const url = searchParams.get("url") || "";
   const tone = searchParams.get("tone") || "";
+  const historyId = searchParams.get("historyId") || "";
 
   const [progress, setProgress] = useState(0);
   const [displayProgress, setDisplayProgress] = useState(0);
@@ -104,6 +106,9 @@ function ResultContent() {
   const [errorMessage, setErrorMessage] = useState("");
   const [sseMessage, setSseMessage] = useState("");
   const [resultData, setResultData] = useState<ResultData | null>(null);
+  const [historySourceUrl, setHistorySourceUrl] = useState("");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const router = useRouter();
 
   // Loading UI states
   const [messageIndex, setMessageIndex] = useState(0);
@@ -113,6 +118,37 @@ function ResultContent() {
   const [dots, setDots] = useState("");
 
   const hasStarted = useRef(false);
+
+  // 히스토리에서 저장된 결과 바로 로드
+  useEffect(() => {
+    if (!historyId || hasStarted.current) return;
+    hasStarted.current = true;
+
+    (async () => {
+      try {
+        const res = await fetch(`/api/history?id=${historyId}`);
+        if (!res.ok) throw new Error("not found");
+        const { data } = await res.json();
+        if (data.resultJson) {
+          const mapped = mapResponseToResultData(data.resultJson);
+          setResultData(mapped);
+          setHistorySourceUrl(data.sourceUrl || "");
+          setProgress(100);
+          setDisplayProgress(100);
+          setIsComplete(true);
+        } else if (data.sourceUrl) {
+          // resultJson이 없으면 sourceUrl로 다시 변환
+          window.location.replace(`/result?url=${encodeURIComponent(data.sourceUrl)}`);
+        } else {
+          setErrorMessage("저장된 결과를 찾을 수 없습니다.");
+          setIsError(true);
+        }
+      } catch {
+        setErrorMessage("히스토리를 불러올 수 없습니다.");
+        setIsError(true);
+      }
+    })();
+  }, [historyId]);
 
   // Dots animation
   useEffect(() => {
@@ -167,16 +203,24 @@ function ResultContent() {
     return () => clearInterval(timer);
   }, [progress, isComplete, isError]);
 
-  // SSE 스트림 연결 (웹 버전과 동일한 로직)
+  // 백그라운드 변환 트리거 + SSE 스트림 연결
   useEffect(() => {
+    if (historyId) return; // 히스토리 로드 시 스킵
     if (!url || hasStarted.current) return;
     hasStarted.current = true;
 
     let cancelled = false;
-
     const controller = new AbortController();
 
-    // 5분 타임아웃 — fetch도 중단
+    // 1) 백그라운드 변환 트리거 (서버 사이드, 페이지 이탈해도 계속 처리됨)
+    const userId = localStorage.getItem("toss_user_id") || "anonymous";
+    fetch("/api/convert/background", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url, tone: tone || undefined, userId }),
+    }).catch(() => {});
+
+    // 5분 타임아웃
     const timeout = setTimeout(() => {
       if (!cancelled) {
         cancelled = true;
@@ -186,6 +230,7 @@ function ResultContent() {
       }
     }, 300_000);
 
+    // 2) SSE 스트림 (실시간 진행률 표시용, 페이지에 있을 때만)
     const callSSE = async () => {
       try {
         const res = await fetch("/api/convert/stream", {
@@ -208,7 +253,6 @@ function ResultContent() {
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
         let buffer = "";
-
         let gotResult = false;
 
         const processLines = (lines: string[]) => {
@@ -226,7 +270,7 @@ function ResultContent() {
                 setIsError(true);
                 setProgress(0);
                 setDisplayProgress(0);
-                gotResult = true; // 에러도 결과로 처리
+                gotResult = true;
                 return;
               }
 
@@ -241,34 +285,12 @@ function ResultContent() {
               if (event.result) {
                 clearTimeout(timeout);
                 gotResult = true;
-                console.log("[DEBUG] frame_urls from backend:", event.result.frame_urls);
                 const mapped = mapResponseToResultData(event.result);
-                console.log("[DEBUG] mapped frameUrls:", mapped.frameUrls);
                 setResultData(mapped);
                 setProgress(100);
                 setDisplayProgress(100);
                 setTimeout(() => setIsComplete(true), 400);
-
-                // 히스토리 자동 저장
-                try {
-                  const userId = localStorage.getItem("toss_user_id");
-                  if (userId) {
-                    const platform = url.includes("instagram") ? "instagram" : "youtube";
-                    fetch("/api/history", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        userId,
-                        platform,
-                        sourceUrl: url,
-                        title: mapped.blogTitle || null,
-                        preview: mapped.summary?.slice(0, 100) || null,
-                        resultJson: event.result,
-                      }),
-                    }).catch(() => {});
-                  }
-                } catch {}
-
+                // 히스토리 저장은 백그라운드 API가 처리하므로 여기서는 생략
                 return;
               }
             } catch {
@@ -288,12 +310,10 @@ function ResultContent() {
           if (gotResult) return;
         }
 
-        // 스트림 끝나고 버퍼에 남은 데이터 처리
         if (buffer.trim()) {
           processLines([buffer]);
         }
 
-        // 스트림이 끝났는데 result가 없으면 에러 처리
         if (!gotResult && !cancelled) {
           clearTimeout(timeout);
           setErrorMessage("변환이 완료되지 않았어요. 다시 시도해주세요.");
@@ -310,14 +330,14 @@ function ResultContent() {
 
     callSSE();
     return () => { cancelled = true; clearTimeout(timeout); controller.abort(); hasStarted.current = false; };
-  }, [url, tone]);
+  }, [url, tone, historyId]);
 
   // 에러 상태
   if (isError) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#FFFFFF' }}>
+      <div className="page-transition" style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#FFFFFF' }}>
         <Header title="변환 결과" showBack />
-        <main style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 32px', gap: 16 }}>
+        <main className="animate-fade-in-scale" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 32px', gap: 16 }}>
           <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(255,59,48,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
               <path d="M12 9v4M12 17h.01" stroke="#FF3B30" strokeWidth="2" strokeLinecap="round"/>
@@ -342,10 +362,62 @@ function ResultContent() {
   if (isComplete && resultData) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#FFFFFF' }}>
-        <Header title="변환 결과" showBack />
-        <main style={{ flex: 1, overflowY: 'auto' }}>
-          <BlogResult data={resultData} sourceUrl={url} onBack={() => window.history.back()} />
+        {/* 커스텀 헤더: 히스토리 버튼 + 새로 만들기 버튼 */}
+        <header style={{
+          position: 'sticky', top: 0, zIndex: 50,
+          background: '#FFFFFF', borderBottom: '1px solid rgba(0,0,0,0.06)',
+        }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            height: 72, padding: '0 20px',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {/* 히스토리 버튼 */}
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="press-effect"
+                style={{ width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'none', cursor: 'pointer' }}
+              >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="9" stroke="#000" strokeWidth="1.8"/>
+                  <polyline points="12,7 12,12 15.5,14" stroke="#000" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+              <span style={{ fontSize: 18, fontWeight: 700 }}>변환 결과</span>
+            </div>
+
+            {/* 새로 만들기 버튼 */}
+            <button
+              onClick={() => router.push('/')}
+              className="press-effect"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 5,
+                padding: '7px 14px', borderRadius: 9999,
+                background: 'none', border: 'none',
+                cursor: 'pointer', fontFamily: 'inherit', letterSpacing: 'inherit',
+              }}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                <path d="M12 5v14M5 12h14" stroke="#000" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#000' }}>새 변환</span>
+            </button>
+          </div>
+        </header>
+
+        <main className="animate-fade-in-up" style={{ flex: 1, overflowY: 'auto' }}>
+          <BlogResult data={resultData} sourceUrl={historySourceUrl || url} onBack={() => router.push('/')} />
         </main>
+
+        <HistorySidebar
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          userId={typeof window !== 'undefined' ? localStorage.getItem('toss_user_id') : null}
+          onItemClick={(item) => {
+            setSidebarOpen(false);
+            router.push(`/result?historyId=${item.id}`);
+          }}
+        />
       </div>
     );
   }
@@ -355,9 +427,9 @@ function ResultContent() {
   const displayMessage = sseMessage || LOADING_MESSAGES[messageIndex];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#FFFFFF' }}>
+    <div className="page-transition" style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#FFFFFF' }}>
       <Header title="변환 중" showBack />
-      <main style={{
+      <main className="animate-fade-in-scale" style={{
         flex: 1,
         display: 'flex',
         flexDirection: 'column',

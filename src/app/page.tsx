@@ -4,10 +4,18 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import HistorySidebar from "@/components/HistorySidebar";
+import Onboarding from "@/components/Onboarding";
 import { requestTossLogin, type TossUser } from "@/lib/toss-bridge";
 
 type Platform = PlatformKey | null;
 type PlatformKey = "youtube" | "instagram-reels" | "instagram-feed";
+
+const TONE_MAP: Record<string, { label: string; color: string }> = {
+  friendly: { label: "친근한", color: "#FF6B6B" },
+  professional: { label: "전문적인", color: "#4DABF7" },
+  casual: { label: "가벼운", color: "#51CF66" },
+  energetic: { label: "활기찬", color: "#FFB43A" },
+};
 
 const PLATFORM_CONFIG: Record<PlatformKey, { title: string; placeholder: string; color: string; label: string }> = {
   youtube: {
@@ -44,6 +52,7 @@ export default function Home() {
   const [linkChip, setLinkChip] = useState<{ platform: "youtube" | "instagram"; title: string; url: string } | null>(null);
   const [user, setUser] = useState<TossUser | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [selectedTone, setSelectedTone] = useState("friendly");
   // 유료화 시 복원
   // const [showPricingModal, setShowPricingModal] = useState(false);
   // const [pricingClosing, setPricingClosing] = useState(false);
@@ -51,6 +60,9 @@ export default function Home() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [refreshKey, setRefreshKey] = useState(0);
+  const [typedText, setTypedText] = useState("");
+  const [showCursor, setShowCursor] = useState(true);
+  const [showOnboarding, setShowOnboarding] = useState<boolean | null>(null);
 
   /* 유료화 시 복원
   const fetchCredits = (userId: string) => {
@@ -67,17 +79,62 @@ export default function Home() {
   };
   */
 
-  // 페이지 진입 시: 로그인 복원
+  // 페이지 진입 시: 온보딩 체크 + 로그인 + 톤 복원
   useEffect(() => {
     try {
-      const savedId = localStorage.getItem("toss_user_id");
-      const savedName = localStorage.getItem("toss_user_name");
-      if (savedId) {
-        setUser({ id: savedId, name: savedName || "사용자" });
-        setRefreshKey((k) => k + 1);
+      const done = localStorage.getItem("logos_onboarding_done");
+      setShowOnboarding(!done);
+    } catch {
+      setShowOnboarding(false);
+    }
+
+    const restore = () => {
+      try {
+        const savedId = localStorage.getItem("toss_user_id");
+        const savedName = localStorage.getItem("toss_user_name");
+        if (savedId) {
+          setUser({ id: savedId, name: savedName || "사용자" });
+          setRefreshKey((k) => k + 1);
+        }
+        const savedTone = localStorage.getItem("logos_tone");
+        if (savedTone && TONE_MAP[savedTone]) {
+          setSelectedTone(savedTone);
+        }
+      } catch {}
+    };
+    restore();
+    // /convert에서 돌아왔을 때 톤 갱신
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        const t = localStorage.getItem("logos_tone");
+        if (t && TONE_MAP[t]) setSelectedTone(t);
       }
-    } catch {}
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
   }, []);
+
+  // 타이핑 애니메이션
+  const prevTitleRef = useRef("");
+  useEffect(() => {
+    const title = selectedPlatform
+      ? PLATFORM_CONFIG[selectedPlatform].title
+      : "무엇을 변환할까요?";
+    if (title === prevTitleRef.current) return;
+    prevTitleRef.current = title;
+    setTypedText("");
+    setShowCursor(true);
+    let i = 0;
+    const id = setInterval(() => {
+      i++;
+      setTypedText(title.slice(0, i));
+      if (i >= title.length) {
+        clearInterval(id);
+        setTimeout(() => setShowCursor(false), 600);
+      }
+    }, 45);
+    return () => clearInterval(id);
+  }, [selectedPlatform]);
 
   /* 유료화 시 복원
   const closePricing = (cb?: () => void) => {
@@ -90,25 +147,29 @@ export default function Home() {
   };
   */
 
-  const handleHistoryItemClick = useCallback((item: { sourceUrl: string }) => {
+  const handleHistoryItemClick = useCallback((item: { id: string; sourceUrl: string }) => {
     setSidebarOpen(false);
-    router.push(`/result?url=${encodeURIComponent(item.sourceUrl)}`);
+    router.push(`/result?historyId=${item.id}`);
   }, [router]);
 
   const YOUTUBE_RE = /https?:\/\/(?:www\.)?(?:youtube\.com\/shorts\/|youtu\.be\/)([a-zA-Z0-9_-]+)/;
   const INSTAGRAM_RE = /https?:\/\/(?:www\.)?instagram\.com\/(reel|reels|p)\/([a-zA-Z0-9_-]+)/;
 
   const detectLink = (text: string): boolean => {
+    if (linkChip) return false; // 이미 링크가 있으면 추가 불가
     const trimmed = text.trim();
     const ytMatch = trimmed.match(YOUTUBE_RE);
     if (ytMatch) {
       setLinkChip({ platform: "youtube", title: `youtube.com/shorts/${ytMatch[1]}`, url: trimmed });
+      setSelectedPlatform("youtube");
       setInputUrl("");
       return true;
     }
     const igMatch = trimmed.match(INSTAGRAM_RE);
     if (igMatch) {
+      const igType = igMatch[1] === "p" ? "instagram-feed" : "instagram-reels";
       setLinkChip({ platform: "instagram", title: `instagram.com/${igMatch[1]}/${igMatch[2]}`, url: trimmed });
+      setSelectedPlatform(igType);
       setInputUrl("");
       return true;
     }
@@ -117,6 +178,7 @@ export default function Home() {
 
   const clearLinkChip = () => {
     setLinkChip(null);
+    setSelectedPlatform(null);
   };
 
   const handlePaste = async () => {
@@ -216,7 +278,8 @@ export default function Home() {
     */
 
     setIsConverting(true);
-    router.push(`/result?url=${encodeURIComponent(url)}`);
+    const savedTone = localStorage.getItem("logos_tone") || "friendly";
+    router.push(`/result?url=${encodeURIComponent(url)}&tone=${savedTone}`);
     setIsConverting(false);
   };
 
@@ -240,6 +303,17 @@ export default function Home() {
     ? PLATFORM_CONFIG[selectedPlatform].placeholder
     : "영상 링크를 붙여넣으세요";
 
+  const handleOnboardingComplete = useCallback(() => {
+    try { localStorage.setItem("logos_onboarding_done", "1"); } catch {}
+    setShowOnboarding(false);
+  }, []);
+
+  // 온보딩 로딩 중 (검은 화면으로 대기)
+  if (showOnboarding === null) return <div style={{ position: 'fixed', inset: 0, background: '#000', zIndex: 9999 }} />;
+
+  // 온보딩 표시
+  if (showOnboarding) return <Onboarding onComplete={handleOnboardingComplete} />;
+
   // ── Input View ──
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#FFFFFF' }}>
@@ -247,6 +321,7 @@ export default function Home() {
         onMenuClick={() => setSidebarOpen(true)}
         selectedPlatform={selectedPlatform}
         onPlatformChange={(p) => handlePlatformSelect(p as Platform)}
+        userName={user?.name}
       />
       <HistorySidebar
         isOpen={sidebarOpen}
@@ -259,17 +334,25 @@ export default function Home() {
       <main style={{ flex: 1, overflowY: 'auto' }}>
         <div className="animate-fade-in-up" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
 
-          {/* ── Plan Badge ── */}
-          <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 80 }}>
-            <div className="plan-badge">
-              <span className="plan-badge__label">{user ? `${user.name} · 무제한 무료` : "무료 이용 가능"}</span>
-            </div>
-          </div>
+          {/* spacer */}
+          <div style={{ paddingTop: 80 }} />
 
           {/* ── Title Section ── */}
           <div style={{ padding: '40px 24px 28px' }}>
-            <h1 style={{ fontSize: 32, fontWeight: 800, letterSpacing: '-0.02em', color: '#000', whiteSpace: 'pre-line', lineHeight: 1.35 }}>
-              {currentTitle}
+            <h1 style={{ fontSize: 32, fontWeight: 800, letterSpacing: '-0.02em', color: '#000', whiteSpace: 'pre-line', lineHeight: 1.35, minHeight: '1.35em' }}>
+              {typedText}
+              {showCursor && (
+                <span style={{
+                  display: 'inline-block',
+                  width: 2,
+                  height: '0.9em',
+                  background: '#6B5CE7',
+                  marginLeft: 2,
+                  borderRadius: 1,
+                  verticalAlign: 'baseline',
+                  animation: 'cursorBlink 0.6s step-end infinite',
+                }} />
+              )}
             </h1>
             <p style={{ fontSize: 16, color: 'rgba(0,0,0,0.35)', marginTop: 10 }}>
               영상 링크를 넣으면 네이버 블로그 글로 변환해드려요
@@ -278,12 +361,12 @@ export default function Home() {
 
           {/* ── Input Card ── */}
           <div style={{ padding: '0 20px 16px' }}>
-            <div className="input-card">
+            <div className="input-card" style={linkChip ? { borderColor: '#6B5CE7', boxShadow: '0 0 0 3px rgba(107,92,231,0.1)' } : undefined}>
               {/* Link Chip + Images */}
               {(linkChip || uploadedImages.length > 0) && (
-                <div style={{ padding: '16px 16px 0', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                <div style={{ padding: '16px 16px 12px', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                   {linkChip && (
-                    <div style={{
+                    <div className="animate-fade-in-scale" style={{
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: 6,
@@ -348,15 +431,28 @@ export default function Home() {
                   ))}
                 </div>
               )}
+              {linkChip && (
+                <p className="animate-fade-in" style={{
+                  padding: '20px 20px 28px',
+                  fontSize: 16,
+                  fontWeight: 700,
+                  color: 'rgba(0,0,0,0.3)',
+                  lineHeight: 1.5,
+                  textAlign: 'center',
+                }}>
+                  이 링크를 블로그 글로 변환할게요 ✨
+                </p>
+              )}
               <textarea
                 ref={textareaRef}
                 value={inputUrl}
                 onChange={handleInputChange}
                 onKeyDown={handleKeyDown}
                 onPaste={handleTextareaPaste}
-                placeholder={linkChip ? "추가 메모를 입력하세요" : currentPlaceholder}
-                disabled={isConverting}
-                rows={linkChip ? 1 : 1}
+                placeholder={linkChip ? "" : currentPlaceholder}
+                disabled={isConverting || !!linkChip}
+                rows={1}
+                style={linkChip ? { display: 'none' } : undefined}
               />
               <input
                 ref={fileInputRef}
@@ -369,16 +465,43 @@ export default function Home() {
               <div className="input-toolbar">
                 <div className="toolbar-group">
                   <button className="toolbar-circle" onClick={() => fileInputRef.current?.click()}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                       <path d="M12 5v14M5 12h14" stroke="#000" strokeWidth="1.8" strokeLinecap="round" opacity="0.3"/>
                     </svg>
                   </button>
                   <button className="toolbar-circle" onClick={handlePaste}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                       <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" stroke="#000" strokeWidth="1.8" strokeLinecap="round" opacity="0.3"/>
                       <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" stroke="#000" strokeWidth="1.8" strokeLinecap="round" opacity="0.3"/>
                     </svg>
                   </button>
+                  <a href="/convert" className="press-effect" style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    padding: '6px 12px',
+                    borderRadius: 9999,
+                    border: `1px solid ${TONE_MAP[selectedTone]?.color || '#6B5CE7'}20`,
+                    background: `${TONE_MAP[selectedTone]?.color || '#6B5CE7'}0A`,
+                    textDecoration: 'none',
+                    cursor: 'pointer',
+                  }}>
+                    <span style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: '50%',
+                      background: TONE_MAP[selectedTone]?.color || '#6B5CE7',
+                      flexShrink: 0,
+                    }} />
+                    <span style={{
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: TONE_MAP[selectedTone]?.color || '#6B5CE7',
+                      whiteSpace: 'nowrap',
+                    }}>
+                      {TONE_MAP[selectedTone]?.label || "친근한"}
+                    </span>
+                  </a>
                 </div>
                 <div className="toolbar-group">
                   <button
@@ -386,7 +509,7 @@ export default function Home() {
                     onClick={handleConvert}
                     disabled={(!inputUrl.trim() && !linkChip) || isConverting}
                   >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
                       <path d="M12 19V5M5 12l7-7 7 7" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
                   </button>
@@ -395,17 +518,8 @@ export default function Home() {
             </div>
           </div>
 
-          {/* ── Quick Links ── */}
-          <div style={{ padding: '0 20px 20px', marginTop: -8 }}>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
-              <a href="/convert" className="action-chip">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                  <path d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z" stroke="#000" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" opacity="0.4"/>
-                </svg>
-                톤 설정
-              </a>
-            </div>
-          </div>
+
+
         </div>
       </main>
 
@@ -428,6 +542,7 @@ export default function Home() {
         >
           <div
             onClick={(e) => e.stopPropagation()}
+            className="stagger-children"
             style={{
               width: '100%',
               maxWidth: 480,

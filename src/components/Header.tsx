@@ -8,6 +8,7 @@ interface HeaderProps {
   onMenuClick?: () => void;
   selectedPlatform?: string | null;
   onPlatformChange?: (platform: string | null) => void;
+  userName?: string | null;
 }
 
 const PLATFORMS = [
@@ -16,7 +17,7 @@ const PLATFORMS = [
   { key: "instagram-feed", label: "인스타그램 피드", color: "#E1306C" },
 ] as const;
 
-export default function Header({ title, showBack, onMenuClick, selectedPlatform, onPlatformChange }: HeaderProps) {
+export default function Header({ title, showBack, onMenuClick, selectedPlatform, onPlatformChange, userName }: HeaderProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -111,7 +112,7 @@ export default function Header({ title, showBack, onMenuClick, selectedPlatform,
 
                   {/* Dropdown Menu */}
                   {dropdownOpen && (
-                    <div style={{
+                    <div className="animate-fade-in-scale" style={{
                       position: 'absolute',
                       top: 'calc(100% + 8px)',
                       left: 0,
@@ -122,6 +123,7 @@ export default function Header({ title, showBack, onMenuClick, selectedPlatform,
                       minWidth: 220,
                       boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
                       zIndex: 100,
+                      transformOrigin: 'top left',
                     }}>
                       {PLATFORMS.map((p) => (
                         <button
@@ -197,7 +199,7 @@ export default function Header({ title, showBack, onMenuClick, selectedPlatform,
                 <circle cx="12" cy="8" r="4" stroke="rgba(0,0,0,0.35)" strokeWidth="1.5"/>
                 <path d="M4 20c0-3.3 3.6-6 8-6s8 2.7 8 6" stroke="rgba(0,0,0,0.35)" strokeWidth="1.5" strokeLinecap="round"/>
               </svg>
-              <span style={{ fontSize: 13, fontWeight: 600, color: 'rgba(0,0,0,0.45)' }}>게스트</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'rgba(0,0,0,0.45)' }}>{userName || '게스트'}</span>
             </div>
           )}
         </div>

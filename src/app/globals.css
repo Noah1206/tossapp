@@ -70,8 +70,8 @@ body { -ms-overflow-style: none; scrollbar-width: none; }
 
 /* Input Card - Manus glass card */
 .input-card {
-  background: rgba(0, 0, 0, 0.025);
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: #FFFFFF;
+  border: 1px solid rgba(0, 0, 0, 0.2);
   border-radius: 24px;
   overflow: hidden;
 }
@@ -79,7 +79,8 @@ body { -ms-overflow-style: none; scrollbar-width: none; }
   display: block;
   width: 100%;
   padding: 24px 24px 16px;
-  font-size: 15px;
+  min-height: 100px;
+  font-size: 18px;
   line-height: 1.6;
   border: none;
   outline: none;
@@ -110,8 +111,8 @@ body { -ms-overflow-style: none; scrollbar-width: none; }
   gap: 6px;
 }
 .toolbar-circle {
-  width: 42px;
-  height: 42px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -130,8 +131,8 @@ body { -ms-overflow-style: none; scrollbar-width: none; }
 
 /* Send Button */
 .send-btn {
-  width: 42px;
-  height: 42px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   background: #6B5CE7;
   display: flex;
@@ -218,9 +219,45 @@ body { -ms-overflow-style: none; scrollbar-width: none; }
   to { opacity: 1; }
 }
 
+@keyframes fadeInScale {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
 @keyframes pulse-dot {
   0%, 80%, 100% { transform: scale(0.4); opacity: 0.2; }
   40% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes cursorBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes checkPop {
+  0% { transform: scale(0); opacity: 0; }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* Page transition - applies to all page content */
+.page-transition {
+  animation: fadeIn 0.25s ease-out;
 }
 
 .animate-fade-in-up {
@@ -229,6 +266,37 @@ body { -ms-overflow-style: none; scrollbar-width: none; }
 
 .animate-fade-in {
   animation: fadeIn 0.3s ease-out forwards;
+}
+
+.animate-fade-in-scale {
+  animation: fadeInScale 0.35s cubic-bezier(0.33, 1, 0.68, 1) forwards;
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.35s cubic-bezier(0.33, 1, 0.68, 1) forwards;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.3s cubic-bezier(0.33, 1, 0.68, 1) forwards;
+}
+
+/* Staggered children animation */
+.stagger-children > * {
+  opacity: 0;
+  animation: fadeInUp 0.4s cubic-bezier(0.33, 1, 0.68, 1) forwards;
+}
+.stagger-children > *:nth-child(1) { animation-delay: 0s; }
+.stagger-children > *:nth-child(2) { animation-delay: 0.06s; }
+.stagger-children > *:nth-child(3) { animation-delay: 0.12s; }
+.stagger-children > *:nth-child(4) { animation-delay: 0.18s; }
+.stagger-children > *:nth-child(5) { animation-delay: 0.24s; }
+.stagger-children > *:nth-child(6) { animation-delay: 0.30s; }
+.stagger-children > *:nth-child(7) { animation-delay: 0.36s; }
+.stagger-children > *:nth-child(8) { animation-delay: 0.42s; }
+
+/* Input card transition */
+.input-card {
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
 }
 
 /* Typing dots */
@@ -302,3 +370,27 @@ body { -ms-overflow-style: none; scrollbar-width: none; }
   transform: scale(0.97);
   opacity: 0.7;
 }
+
+/* ===== Onboarding ===== */
+@keyframes ob-fu { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+@keyframes ob-fsl { from { opacity:0; transform:translateX(-20px); } to { opacity:1; transform:translateX(0); } }
+@keyframes ob-fzm { from { opacity:0; transform:scale(.85); } to { opacity:1; transform:scale(1); } }
+@keyframes ob-fdr { from { opacity:0; transform:translateY(-16px); } to { opacity:1; transform:translateY(0); } }
+@keyframes ob-numUp { from { opacity:0; transform:translateY(30px); } to { opacity:1; transform:translateY(0); } }
+@keyframes ob-rowIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+@keyframes ob-ripple { from { transform:scale(0); } to { transform:scale(1); } }
+@keyframes ob-sweep { 0% { left:-70%; } 100% { left:120%; } }
+
+.ob-btn {
+  width: 85%;
+  height: 58px;
+  border-radius: 20px;
+  border: none;
+  cursor: pointer;
+  font-size: 17px;
+  font-weight: 600;
+  font-family: inherit;
+  letter-spacing: -0.3px;
+  transition: transform 0.12s, opacity 0.12s;
+}
+.ob-btn:active { transform: scale(0.97); }

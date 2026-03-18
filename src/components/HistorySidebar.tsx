@@ -201,7 +201,7 @@ export default function HistorySidebar({ isOpen, onClose, userId, onItemClick, r
               {showSortMenu && (
                 <>
                   <div onClick={() => setShowSortMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
-                  <div style={{
+                  <div className="animate-fade-in-scale" style={{
                     position: 'absolute',
                     left: 12,
                     top: '100%',
@@ -212,6 +212,7 @@ export default function HistorySidebar({ isOpen, onClose, userId, onItemClick, r
                     zIndex: 20,
                     minWidth: 100,
                     boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                    transformOrigin: 'top left',
                   }}>
                     {(["newest", "oldest", "alpha"] as SortOption[]).map((option) => (
                       <button
@@ -262,7 +263,7 @@ export default function HistorySidebar({ isOpen, onClose, userId, onItemClick, r
                   <p style={{ fontSize: 11, fontWeight: 600, color: 'rgba(0,0,0,0.3)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6, padding: '0 8px' }}>
                     최근
                   </p>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <div className="stagger-children" style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                     {history.map((item) => (
                       <button
                         key={item.id}
@@ -291,7 +292,7 @@ export default function HistorySidebar({ isOpen, onClose, userId, onItemClick, r
                         </svg>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <p style={{ fontSize: 13, fontWeight: 500, color: '#000', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {item.title || "제목 없음"}
+                            {item.title || (item.sourceUrl?.includes("instagram") ? "인스타그램 변환" : item.sourceUrl?.includes("youtube") || item.sourceUrl?.includes("youtu.be") ? "유튜브 변환" : "변환 결과")}
                           </p>
                           <p suppressHydrationWarning style={{ fontSize: 11, color: 'rgba(0,0,0,0.3)', marginTop: 2 }}>
                             {formatTime(item.createdAt)}

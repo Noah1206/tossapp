@@ -76,7 +76,7 @@ export function share(title: string, text: string, url?: string) {
   if (isTossApp()) {
     sendTossBridge("share", { title, text, url });
   } else if (navigator.share) {
-    navigator.share({ title, text, url });
+    navigator.share({ title, text, url }).catch(() => {});
   }
 }
 

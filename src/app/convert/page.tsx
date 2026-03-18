@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import Header from "@/components/Header";
 
 const TONE_ICONS: Record<string, string> = {
@@ -13,8 +13,28 @@ const TONE_ICONS: Record<string, string> = {
 
 function ConvertContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const url = searchParams.get("url") || "";
   const [tone, setTone] = useState("friendly");
+
+  // localStorage에서 톤 복원 (클라이언트 only)
+  useEffect(() => {
+    const saved = localStorage.getItem("logos_tone");
+    if (saved) setTone(saved);
+  }, []);
+
+  // 톤 변경 시 저장
+  useEffect(() => {
+    localStorage.setItem("logos_tone", tone);
+  }, [tone]);
+
+  const handleSelect = () => {
+    if (url) {
+      router.push(`/result?url=${encodeURIComponent(url)}&tone=${tone}`);
+    } else {
+      router.back();
+    }
+  };
 
   const tones = [
     { key: "friendly", label: "친근한", desc: "편안하고 다가가기 쉬운 톤", color: "#FF6B6B" },
@@ -24,19 +44,19 @@ function ConvertContent() {
   ];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#FFFFFF' }}>
+    <div className="page-transition" style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#FFFFFF' }}>
       <Header title="변환 설정" showBack />
 
       <main style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
         {/* Tone Selection */}
-        <div>
+        <div className="animate-fade-in-up">
           <p style={{ fontSize: 24, fontWeight: 800, color: '#000', marginBottom: 8 }}>
             글 톤을 선택해주세요
           </p>
           <p style={{ fontSize: 16, color: 'rgba(0,0,0,0.4)', marginBottom: 28, lineHeight: 1.5 }}>
             타겟 고객에 맞는 톤으로 변환해드려요
           </p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div className="stagger-children" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             {tones.map((t) => {
               const isSelected = tone === t.key;
               return (
@@ -100,6 +120,7 @@ function ConvertContent() {
       {/* CTA */}
       <div style={{ background: '#FFFFFF', padding: '16px 20px', borderTop: '1px solid rgba(0,0,0,0.06)' }}>
         <button
+          onClick={handleSelect}
           className="press-effect"
           style={{
             width: '100%',
@@ -115,7 +136,7 @@ function ConvertContent() {
             letterSpacing: 'inherit',
           }}
         >
-          변환하기
+          선택하기
         </button>
         <p style={{ fontSize: 11, color: 'rgba(0,0,0,0.3)', textAlign: 'center', marginTop: 8 }}>
           무료 이용 중

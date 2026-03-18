@@ -7,6 +7,28 @@ export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
+    // 단일 조회: /api/history?id=xxx
+    const id = searchParams.get("id");
+    if (id) {
+      const item = await prisma.conversion.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          platform: true,
+          sourceUrl: true,
+          title: true,
+          preview: true,
+          status: true,
+          resultJson: true,
+          createdAt: true,
+        },
+      });
+      if (!item) {
+        return NextResponse.json({ error: "not found" }, { status: 404 });
+      }
+      return NextResponse.json({ data: item });
+    }
+
     const userId = searchParams.get("userId");
     if (!userId) {
       return NextResponse.json({ error: "userId required" }, { status: 400 });
@@ -28,7 +50,7 @@ export async function GET(req: NextRequest) {
     }
 
     const data = await prisma.conversion.findMany({
-      where: { userId },
+      where: { userId, status: "completed" },
       orderBy,
       take: limit,
       select: {
@@ -37,6 +59,7 @@ export async function GET(req: NextRequest) {
         sourceUrl: true,
         title: true,
         preview: true,
+        status: true,
         createdAt: true,
       },
     });
@@ -47,6 +70,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+// GET by ID: 단일 히스토리 조회 (resultJson 포함)
+// /api/history?id=xxx
+// (위 GET 핸들러에서 id 파라미터 분기)
 
 // POST: 변환 결과 저장
 export async function POST(req: NextRequest) {
