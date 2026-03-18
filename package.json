@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
+    "build:ait": "prisma generate && next build && npx ait build",
     "start": "next start",
     "lint": "eslint"
   },
