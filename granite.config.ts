@@ -14,6 +14,7 @@ export default defineConfig({
         icon: 'https://tossapp-tan.vercel.app/icon.png',
       },
       navigationBar: {},
+      permissions: [],
     }),
   ],
 });
