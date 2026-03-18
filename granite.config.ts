@@ -1,20 +1,20 @@
-import { defineConfig } from '@granite-js/plugin-core';
-import { appsInToss } from '@apps-in-toss/plugins';
+import { defineConfig } from '@apps-in-toss/web-framework/config';
 
 export default defineConfig({
-  appName: 'logos-ai',
-  scheme: 'logos-ai',
+  appName: 'logos',
+  web: {
+    host: 'localhost',
+    port: 3000,
+    commands: {
+      dev: 'next dev',
+      build: 'next build',
+    },
+  },
+  permissions: [],
   outdir: 'out',
-  plugins: [
-    appsInToss({
-      appType: 'general',
-      brand: {
-        displayName: 'Logos AI',
-        primaryColor: '#6B5CE7',
-        icon: 'https://tossapp-tan.vercel.app/icon.png',
-      },
-      navigationBar: {},
-      permissions: [],
-    }),
-  ],
+  brand: {
+    displayName: 'Logos AI',
+    icon: 'https://tossapp-tan.vercel.app/icon.png',
+    primaryColor: '#6B5CE7',
+  },
 });

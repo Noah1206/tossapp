@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
-    "build:ait": "prisma generate && mv src/app/api src/app/_api_backup && STATIC_EXPORT=1 next build && mv src/app/_api_backup src/app/api && cd out && zip -r ../logos-ai.ait . && cd ..",
+    "build:ait": "prisma generate && mv src/app/api src/app/_api_backup && STATIC_EXPORT=1 next build && mv src/app/_api_backup src/app/api && cp app.json out/app.json && cd out && zip -r ../logo-app.ait . && cd ..",
     "start": "next start",
     "lint": "eslint"
   },
