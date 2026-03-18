@@ -1,0 +1,11 @@
+{
+  "name": "logos-ai",
+  "displayName": "Logos AI",
+  "version": "1.0.0",
+  "scheme": "logos-ai",
+  "appType": "general",
+  "brand": {
+    "primaryColor": "#6B5CE7",
+    "icon": "https://tossapp-tan.vercel.app/icon.png"
+  }
+}
